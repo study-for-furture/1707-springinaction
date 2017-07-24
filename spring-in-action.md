@@ -239,12 +239,184 @@
 ***
 
 #### 1.4 스프링의 새로운 기능
+* 스프링 각 버전의 새로운 특징과 개선점을 알아보자
+***
 
+###### 1.4.1 스프링 3.1에서 새로워진 기능
+* 여러 가지 유용한 새 기능과 개선
+* 설정을 간소화하고 개선하는데 초점을 둠
+* 스프링 3.1의 개선 부분
+	* 환경 프로파일을 도입 - 설정파일을 프로파일로 분리
+	* enable 어노테이션 추가
+	* 선언적 캐싱 지원
+	* 새로운 c-네임스페이스 지원 - 생성자 주입 가능
+		> http://blog.naver.com/PostView.nhn?blogId=kimnx9006&logNo=220601449510&parentCategoryNo=&categoryNo=29&viewDate=&isShowPopularPosts=false&from=postView
+	* 서블릿 3.0을 지원하기 시작
+	* JPA 지원 강화 - persistence.xml없에 JPA 설정 가능
+	* 스프링MVC에 대한 부분 강화
+***
 
+###### 1.4.2 스프링 3.2에서 새로워진 기능
+* 주로 스프링 MVC에 초점을 맞춘 릴리즈
+* 스프링 3.2의 개선 부분
+	* 컨트롤러가 분리된 스레드 내에서 처리
+	* 서블릿 컨테이너 없이도 컨트롤러로서의 역할을 수행
+	* RestTemplate 기반의 클라이언트 테스트를 지원
+	* @ControllerAdvice 추가 - 세가지 메소드를 하나의 클래스에 집합
+	* ...
+	* @Autowired, @Value 그리고 @Bean 어노테이션은 커스텀 주입과 빈 선언 어노테이션을 생성하기 위한 메타-어노테이션으로 사용
+***
 
+###### 1.4.3 스프링 4.0에서 새로워진 기능
+* 스프링 4.0의 개선 부분
+	* 웹소켓 프로그래밍을 지원
+	* 매우 높은 수준의 메시지 기반 모델의 웹 소켓도 지원
+	* 새로운 메시지 모듈은 많은 타입을 가지며, 스프링 통합 프로젝트로 넘어옴
+	* 자바8의 특징인 람다식을 지원 - 콜백 인터페이스로 작업 가능
+	* JSR-310의 데이터 및 시간 API를 포함하는 자바 8 지원
+	* Groovy로 개발된 애플리케이션에 대한 지원이 추가되어 쉽게 개발 가능
+	* 조건부 빈 생성에 대한 일반적 지원이 추가
+	* RestTemplate에 대한 새로운 비동기식 구현이 추가 - 응답을 반환하고 연산 종료 시 콜백 호출 가능
+	* 많은 JEE 스펙 지원이 추가
+***
 
+#### 1.5 요약
+* DI
+	* 객체들이 상호 간의 종속관계나 구체적인 구현 방법을 알 필요가 없도록 애플리케이션 객체들을 연결하는 방법
+	* 객체간 결합도가 낮아짐
+* AOP
+	* 애플리케이션에 흩어져 있는 로직을 한 곳으로(애스펙트로) 모을수 있음
+	* 각 애스펙트는 런타임에 빈과 연결되어 효과적으로 빈에 새로운 기능을 부여할 수 있음
+***
 
+## 2장 빈 와이어링(묶기)
+* 다룰내용
+	* 빈(bean) 선언
+	* 생성자 주입과 세터 주입
+	* 빈 와이어링
+	* 빈의 생성과 소멸 제어
+* 스프링에서는 컨테이너가 협엽할 객체에 대한 레퍼런스를 준다.
+* 와이어링
+	* 객체 간의 연관관계 형성 작업 - DI 개념의 핵심
+* 다음은 스프링 컨테이너를 설정하기 위한 세가지 접근 방법임
+***
 
+#### 2.1 스프링 설정 옵션 알아보기
+* 어떤 빈을 생성할지, 그들을 어떻게 엮을지 스프링에게 알려주는 것은 개발자의 책임
+* 스프링이 제공하는 세가지 와이어링 메커니즘
+	* XML에서의 명시적 설정
+	* 자바에서의 명시적 설정
+	* 내재되어 있는 빈을 찾아 자동으로 와이어링하기
+* 가능하다면 자동 설정을 추천 - 명시적인 설정이 적을수록 좋음
+* 명시적인 빈 설정을 해야 할때는 JavaConfig를 선호
+* 사용하고자하는 XML 네임스페이스의 기능이 JavaConfig에 없을 경우는 XML을 사용
+***
+
+#### 2.2 자동으로 빈 와이어링하기
+* 스프링의 자동 와이어링 방법 두가지
+	* 컴포넌트 스캐닝
+		* 애플리케이션 컨텍스트에서 생성되는 빈을 자동으로 발견
+	* 오토 와이어링
+		* 자동으로 빈 의존성을 충족시킴
+* 자동 와이어링의 개념 설명을 위한 예
+	* 스테레오 시스템의 몇가지 컴포넌트를 나타내는 빈
+	* CompactDisc 클래스 - 스프링이 시작 시에 자동으로 빈으로 생성
+	* CDPlayer 클래스 - 스프링이 자동으로 발견해서 여기에 CompactDisc 빈을 주입
+***
+
+###### 2.2.1 발견 가능한 빈 만들기
+* CD를 정의하는 인터페이스인 CompactDisc
+	* P42 코드2.1
+	```JAVA
+    	package soundsystem;
+        
+        public interface CompactDisc {
+            void play();
+        }
+    ```
+	> 인터페이스로 정의되어 있어 어떤 CD플레이어 구현과 CD 그 자체 사이에 최소한의 커플링을 유지함
+***
+
+* CompactDisc를 구현
+	* P43 코드2.2
+	```JAVA
+    	package soundsystem;
+        import org.springframework.stereotype.Component;
+        
+        @Component
+        public class SgtPeppers implements CompactDisc {
+        	private String title = "Sgt. Pepper's Lonely Hearts Club Band";
+            private String artist = "The Beatles";
+            
+            public void play(){
+            	System.out.println("Playing " + title + " by " + artist);
+            }
+        }
+    ```
+    > @Component 어노테이션 사용 - 클래스가 컴포넌트 클래스임을 나타내며 빈으로 만들어야 함을 스프링에 알림
+***
+
+* 스프링이 어노테이션을 찾아 빈을 등록하도록 처리
+	* P43 코드2.3
+	```JAVA
+    	package soundsystem;
+        import org.springframework.context.annotation.ComponentScan;
+        import org.springframework.context.annotation.Configuration;
+        
+        @Configuration
+        @ComponentScan
+        public class CDPlayerConfig {
+        
+        }
+    ```
+    > 자바로 스프링 와이어링 스펙을 정의
+    > soundsystem 패키지와 하위 패키지를 스캔하고 어노테이션을 찾아 빈으로 등록한다.
+
+	* P44 코드2.4 XML로 컴포넌트 스캐닝 활성화하기
+	```XML
+    	<?xml version-"1.0" encoding="UTF-8" ?>
+        <beans xmlns="http://www.springframework.org/schema/beans"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+            xmlns:context="http://www.springframework.org/schema/context"
+            xsi:schemaLocation="http://www.springframework.org/schema/beans
+            	http://www.springframework.org/schema/beans/spring-beans.xsd
+                http://www.springframework.org/schema/context
+                http://www.springframework.org/schema/context/spring-context.xsd">
+            <context:component-scan base-package="soundsystem" />
+        </beans>
+    ```
+***
+
+* 컴포넌트 스캐닝에 의해 발견된 CompactDisc 테스트하기
+	* P45 코드2.5
+	```JAVA
+    	package soundsystem;
+        
+        import static org.junit.Assert.*;
+        
+        import org.junit.Test;
+        import org.junit.runner.RunWith;
+        import org.springframework.beans.factory.annotation.Autowired;
+        import org.springframework.test.context.ContextConfiguration;
+        import org.springframework.test.context.junit4.SpringJunit4ClassRunner;
+        
+        @RunWith(SpringJUnit4ClassRunner.class)
+        @ContextConfiguration(classes=CDPlayerConfig.class)
+        public class CDPlayerTest {
+        	@Autowired
+            private CompactDisc cd;
+            
+            @Test
+            public void cdShouldNotBeNull(){
+            	assertNotNull(cd);
+            }
+        }
+    ```
+    > @ContextConfiguration 어노테이션은 CDPlayerConfig 클래스를 통해서 설정을 로드
+    > cd 프로퍼티가 null이 아니게 된다 - by autowired
+***
+
+###### 2.2.2 컴포넌트 스캔된 빈 명명하기
 
 
 
