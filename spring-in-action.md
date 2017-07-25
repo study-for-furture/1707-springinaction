@@ -417,9 +417,94 @@
 ***
 
 ###### 2.2.2 컴포넌트 스캔된 빈 명명하기
+* 모든 빈은 ID가 주어짐
+	* 명시적으로 주어지지 않으면 클래스 명의 첫 글자를 소문자로 바꾼 값을 사용
+	* ID 변경은 value로 넣어주면 됨
+	```JAVA
+    	@Component("lonelyHeartsClub")
+        public class SgtPeppers implements CompactDisc {
+         ...
+        }
+    ```
+    * @Named 어노테이션으로도 변경가능하지만 선호되지는 않는다.
+    ```JAVA
+    	package soundsystem;
+        import javax.inject.Named;
+        
+        @Named("loneyHeartsClub")
+        public class SgtPeppers implements CompactDisc {
+         ...
+        }
+    ```
+***
 
+###### 2.2.3 컴포넌트 스캐닝을 위한 베이스 패키지 세팅
+* 베이스 패키지를 명시하는 이유
+	* 애플리케이션 코드와 설정 코드의 분리
+	* 베이스 패키지 지정 방법
+		```JAVA
+        	@Configuration
+        	@ComponentScan("soundsystem")
+            public class CDPlayerConfig {}
+        ```
+        > 스캔 값 영역에 기술
 
+		```JAVA
+        	@Configuration
+        	@ComponentScan(basePackages="soundsystem")
+            public class CDPlayerConfig {}
+        ```
+        > basePackages 애트리뷰트를 사용하여 명시
+        
+        ```JAVA
+        	@Configuration
+        	@ComponentScan(basePackages={"soundsystem", "video"})
+            public class CDPlayerConfig {}
+        ```
+        > 여러 개의 베이스 패키지 지정
 
+        ```JAVA
+        	@Configuration
+        	@ComponentScan(basePackageClasses={CDPlayer.class, DVDPlayer.class})
+            public class CDPlayerConfig {}
+        ```
+        > 패키지명의 type safe를 위해 클래스명을 지정
+***
+
+###### 2.2.4 오토와이어링되는 빈의 애너테이션
+* 오토와이어링
+	* 애플리케이션 컨텍스트상에서 다른 빈을 찾아 빈 간의 의존성을 자동으로 만족시키도록 하는 수단
+	* @Autowired 어노테이션을 사용
+	* 오토와이어링 방법
+		* 생성자를 통한 방법
+			* P48 코드2.6
+				* CompactDisc를 CDPlayer빈으로 주입 by Autowiring
+		* 세터 메소드를 통한 방법
+			* P49 두번째 코드 예제
+	* 생성자나 세터 메소드를 포함한 어떤 메소드든 스프링은 메소드 파라미터에 의존성을 가진다.
+		* 한 개의 빈이 일치하면 그 빈은 와이어링 된다.
+		* 매칭되는 빈이 없다면 예외가 발생하며, 예외를 피하기 위해서는 required를 false로 해야 함
+		```JAVA
+        	@Autowired(required=false)
+            public CDPlayer(CompactDisc cd){
+            	this.cd = cd;
+            }
+        ```
+        > required가 false일때는 코드에서 Null 체크를 해야 함
+        > 다중 빈이 의존성을 가질때도 예외를 발생함
+
+	* @Inject
+		* @Autowired는 스프링에서 정의한 어노테이션
+		* 스프링 기반의 어노테이션 사용이 어려울때 사용 가능
+		* 자바 종속 객체 정의에 있음
+***
+
+###### 2.2.5 자동 설정 검증하기
+* CDPlayer 빈을 통해 콤팩 디스크를 재생하는 CDPlayerTest를 변경
+	* P51 예제
+***
+
+#### 2.3 자바로 빈 와이어링하기
 
 
 
