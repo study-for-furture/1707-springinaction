@@ -124,6 +124,9 @@
 			>> Minstrel은 여전히 POJO
 			>> BraveKnight는 Minstrel의 존재를 전혀 모름 - 알 필요도 없음
 			>> 애스펙트 적용을 위해서는 스프링 빈으로 등록해야 함
+			>
+			> AspejctJ Pointcut 표현식
+			>> http://groovysunday.tistory.com/201
 ***
 
 ###### 1.1.4 템플릿을 이용한 상투적인 코드 제거
