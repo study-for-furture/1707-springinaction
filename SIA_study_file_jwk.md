@@ -298,7 +298,7 @@
 	* 생성자 주입과 세터 주입
 	* 빈 와이어링
 	* 빈의 생성과 소멸 제어
-* 스프링에서는 컨테이너가 협엽할 객체에 대한 레퍼런스를 준다.
+* 스프링에서는 컨테이너가 협업할 객체에 대한 레퍼런스를 준다.
 * 와이어링
 	* 객체 간의 연관관계 형성 작업 - DI 개념의 핵심
 * 다음은 스프링 컨테이너를 설정하기 위한 세가지 접근 방법임
@@ -508,14 +508,157 @@
 ***
 
 #### 2.3 자바로 빈 와이어링하기
+* 자동설정은 옵션이 아니며 명시적으로 설정해야 한다.
+* 명시적 설정 방법
+	* 자바
+		* 타입세이프하며, 리팩토링이 친화적이므로 명시적 설정을 위해 선호됨
+	* XML
+***
 
+###### 2.3.1 설정 클래스 만들기
+* CDPlayerConfig
+```JAVA
+	package soundsystem;
+    import org.springframework.context.annotation.Configuration;
+    
+    @Configuration
+    public class CDPlayerConfig {
+    
+    }
+```
+	> @Configuration으로 어노테이션 해서 설정파일로 식별
+	> 명시적인 설정을 위해 @ComponentScan을 제거
+***
 
+###### 2.3.2 간단한 빈 선언하기
+* 메소드를 만들고 @Bean으로 어노테이션 처리
+```JAVA
+	@Bean
+    public CompactDisc sgtPeppers(){
+    	return new SgtPeppers();
+    }
+```
+	> @Bean - 메소드가 빈으로 등록된 객체를 반환해야 함을 나타냄
+	> 기본적으로 빈은 @Bean으로 어노테이션된 메소드와 동일한 ID로 지정됨
+	> 이름 변경 - @Bean(name="바꿀이름")
+***
 
+###### 2.3.3 JavaConfig 주입하기
+* JavaConfig에서 빈 와이어링
+```JAVA
+	@Bean
+    public CDPlayer cdPlayer(){
+    	return new CDPlayer(sgtPeppers());
+    }
+```
+> 빈 와이어링 - 참조된 빈 메소드를 참조하는 것
+> 기본 생성자를 호출해서 생성되는 것이 아니라 스프링이 콜을 중간에 인터셉트해서 메소드에 의해 만들어진 빈은 한번만 만들어진다.
 
+* 설정을 설정클래스, XML 파일, 자동 스캔 등으로 쪼갤 수 있다.
+***
 
+#### 2.4 빈을 XML로 와이어링하기
+* XML설정이 첫번째 선택지는 아니지만 기존에 많이 사용되고 있으므로 이해가 필요하다.
+* 새로 작성하는 스프링은 자동 설정과 JavaConfig를 사용하길 바란다.
+***
 
+###### 2.4.1 XML 설정 스펙 만들기
+* XML 설정파일 필요
+	* P58
+***
 
+###### 2.4.2 간단한 빈 선언
+* 빈 선언은 &lt;bean&gt; 을 사용
+* 기본 생성되는 빈의 이름은 패키지.클래스명#0 다.
+* 이름 변경은 id 속성을 사용하면 된다.
+* XML 설정은 참조할 자바 타입의 존재유무 체크를 못한다.
+***
 
+###### 2.4.3 생성자 주입을 사용하여 빈 초기화하기
+* 생성자 주입 방법
+	* &lt;constructor-arg&gt; 요소 사용
+	```XML
+    	<bean id="cdPlayer" class="soundsystem.CDPlayer">
+        	<constructor-arg ref="compactDisc" />
+        </bean>
+    ```
+	* 3.0에서 도입된 c-네임스페이스
+	```XML
+    	<bean id="cdPlayer" class="soundsystem.CDPlayer" c:cd-ref="compactDisc">
+    ```
+    > c:cd-ref="compactDis" 형태로 사용
+    > c: - c-네임스페이스 접두어
+    > cd : 생성자 인자명
+    > -ref : 빈 레퍼런스 주입
+    > compactDisc : 주입용 빈 ID
+***
+
+* 와이어링 컬렉션
+	* 인자를 전달할때 &lt;list&gt; 사용
+		* P65 맨 아래 예
+	* Bean 참조는 ref 사용
+		* P66 중간 예
+	* set 도 사용 가능
+		* P66 맨 아래 예
+	* set과 list 차이점
+		* set은 중복값 삭제되며 순서 고려되지 않음
+***
+
+###### 2.4.4 프로퍼티 세팅
+* 프로퍼티 주입이 스프링 XML에서 어떻게 작동하는지를 알아본다.
+* 새로운 프로퍼티 주입 CDPlayer
+	* P67 하단 예
+* p-네임스페이스
+	* propery 요소의 대안으로 사용 가능
+	```XML
+    	<bean id="cdPlayer" class="soundsystem.CDPlayer"
+        	p:compactDisc-ref="compactDisc" />
+    ```
+    > 컬렉션을 와이어링할때는 사용할 수 없음
+***
+
+#### 2.5 설정 가져오기와 믹싱하기
+* JavaConfig 또는 XML 설정에서 컴포넌트 스캐닝 및 오토와이어링을 혼합하는 건 자유
+***
+
+###### 2.5.1 JavaConfig로 XML 설정 참조하기
+* CDPlayerConfig를 두개로 분할
+	* P73 하단 예
+	* @Import 어노테이션 사용
+	* CDPlayerConfig에서 @import를 남김
+		* 두 설정을 함께 가지는 더 높은 수준의 설정파일 생성
+* XML import
+	* @ImportResource 사용 - P75
+***
+
+###### 2.5.2 XML 설정에서 JavaConfig 참조하기
+* &lt;import&gt; 요소를 사용해서 XML 설정을 분할
+	> XML 분리는 import resource="cd-config.xml" 사용
+	> JavaConfig 사용은 &lt;bean class="soundsystem.CDConfig" /&gt;
+	> P76 하단 예
+***
+
+#### 2.6 요약
+* 스프링에 빈을 와이어링하는 세가지 방법
+	* 자동 설정
+	* 명시적인 Java 기반 설정
+	* 명시적인 XML 기반 설정
+* 자동설정을 추천
+* Java 기반 설정을 추천
+***
+
+## 3장 고급 와이어링
+* 다룰내용
+	* 스프링 프로파일
+	* 조건 빈 선언
+	* 오토와이어링과 애매성
+	* 빈 범위
+	* 스프링 표현 언어
+***
+
+#### 3.1 환경과 프로파일
+* 소프트웨어 개발에서 가장 어려운일 - 마이그레이션
+* 
 
 
 
