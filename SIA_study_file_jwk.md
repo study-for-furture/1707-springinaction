@@ -697,7 +697,7 @@
 ***
 
 ###### 3.1.2 프로파일 활성화하기
-* 어느 프로파일이 활성상태인지 결정할때 두가지 프로퍼티를 참고함
+* 어느 프로파일이 활성상태인지 결정할 때 두가지 프로퍼티를 참고함
 	* spring.profiles.active
 		* 어느 프로파일이 활성상태인지 결정
 	* spring.profiles.default
@@ -719,12 +719,523 @@
 ***
 
 * 프로파일 테스팅
-* 
+	* 통합테스트 시, 리얼과 같은 설정을 적용하고 싶을때
+	* 설정이 프로파일에 있는 빈을 참조한다면, 테스트를 수행하기 위해 적절한 프로파일을 enable 시킬수 있어야 한다.
+	* @ActiveProfile 어노테이션
+		* 테스트를 수행할때 활성화할 프로파일을 지정
+	* 스프링 프로파일은 활성화된 빈을 기반으로 선택적으로 빈을 정의하는 좋은 방법이지만,
+	* Spring4 부터는 더욱 범용적인 목적을 위한 @Conditional 어노테이션을 제공한다.
+***
 
+#### 3.2 조건부 빈
+* 특정 라이브러리가 사용가능하거나, 특정 환경변수가 설정되어 있을때 특정 빈을 설정하고 싶다면.
+* @Conditional 어노테이션
+	* 소정의 조건이 참으로 평가된 경우 빈이 생성되고 그렇지 않으면 빈은 무시된다.
+	```JAVA
+    @Bean
+    @Conditional(MagicExistsCondition.class)	<-- 조건적으로 빈 생성
+    public MagicBean magicBean(){
+    	return new MagicBean();
+    }
+    ```
+	> @Conditional - 조건을 지정하는 클래스를 명시
 
+	* P89 코드3.5 Condition에 magic 존재 여부 체크
+		* 환경 변수에 magic 프로퍼터가 존재하는지 확인하는 Condition 코드
+		* Condition 인터페이스를 구현하며 matches 메소드를 작성해야 함
+	* ConditionContext로 할수 있는 기능 - 인터페이스로 matches에 파라미터로 주어짐
+		* 빈 정의 체크
+		* 빈의 존재여부를 확인하고, 빈의 속성들도 검증 가능
+		* 환경 변수의 존재여부와 값을 확인
+		* 자원들의 내용을 읽고, 검사
+		* 클래스를 로드하고 체크
+	* AnnotatedTypeMetadata - @Bean 메소드의 어노테이션을 검사할수 있게 지원
+		* P91 AnnotatedTypeMetadata 인터페이스 정의
+	* @Profile 어노테이션은 스프링4에서 @Conditional과 Condition inteface를 기반으로 리팩토링 되었음
+		* ProfileCondition에서 Matches를 사용해서 여러가지 조건을 체크하는 형태로 구현 됨
+		* P92 코드3.6
+***
 
+#### 3.3 오토와이어링의 모호성
+* 일치하는 빈이 여럿 있으면, 오토와이어링이 동작하기 어렵다.
+* 오토와이어링 모호성 예시
+	```JAVA
+    @Autowired
+    public void setDessert(Dessert dessert){
+    	this.dessert = dessert;
+    }
+    ```
+    > setDessert() 메소드가 어노테이션 됨
+    > Dessert는 인터페이스이며 세 개의 클래스로 구현 됨
 
+	```JAVA
+    @Component
+    public class Cake implements Dessert { ... }
+    
+    @Component
+    public class Cookies implements Dessert { ... }
+    
+    @Component
+    public class IceCream implements Dessert { ... }
+    ```
+	> 세 구현체는 @Component으로 어노테이션 됨
+	> 이때 autowiring하면 NoUniqueBeanDefinitionException이 발생 됨
 
+* 모호성 방지를 위한 몇가지 옵션들
+	* 후보 빈들 중의 하나가 주요한 선택이 되도록 할수 있음
+	* 하나의 후보가 선택되도록 한정자를 붙일 수 있음
+***
 
+###### 3.3.1 기본 빈 지정
+```JAVA
+@Component
+@Primary
+public class IceCream implements Dessert { ... }
+```
+> 빈 선언 시 기본 빈으로 하나를 지정하여 오토와이어링의 모호함을 피할 수 있음
 
+```JAVA
+@Bean
+@Primary
+public Dessert IceCream() { 
+	return new IceCream();
+}
+```
+> 자바 설정으로 명시적으로 IceCream 빈을 선언 
+> 또는 XML로도 기본 빈 선언 가능
 
+* 여러 개의 빈을 기본으로 지정하면 기본 빈이 없는 것과 같다.
+***
+
+###### 3.3.2 오토와이어링 빈의 자격 (Qualifying autowired beans)
+* @Qualifier 어노테이션
+	* qualifier로 작업하는 주요한 방법
+	* 주입대상 빈을 지정할 주입 지점에 @Autowired나 @Inject와 함께 적용 된다.
+	```JAVA
+    @Autowired
+    @Qualifier("iceCream")
+    public void setDessert(Dessert dessert) {
+    	this.desert = desert;
+    }
+    ```
+    > IceCream 빈이 setDessert()에 주입되는지 확실시 함
+    > Qualifier의 파라미터는 빈의 아이디임
+
+	* 빈의 아이디가 디폴트로 생성된 경우, 클래스명이 리팩토링되거나 하면 오토와이어링이 실패할 수 있다.
+***
+
+* 맞춤형 수식자 만들기 (Creating custom qualifiers)
+	* Qualifier로 빈 ID를 사용하는 대신 빈에 qualifier를 지정할수 있다.
+	* 빈 선언시 @Qualifier 어노테이션을 사용하면 된다.
+	```JAVA
+    // 빈 선언 시 Qualifier 적용
+    @Componenet
+    @Qualifier("cold")
+    public class IceCream implements Dessert { ... }
+    
+    // Autowired시 지정한 Qualifier 사용
+    @Bean
+    @Qualifier("cold")
+    public Dessert iceCream() {
+    	return new IceCream();
+    }
+    ```
+***
+
+* 맞춤형 수식자 애너테이션 정의하기 (Defining custom qualifier annotations)
+	* 일반적인 특성을 공유하는 빈이 여러개 있을 경우는 문제가 됨
+		* @Qualifier("cold")를 복수의 빈에 적용하는 경우
+	* 추가로 @Qualifier를 지정하는 해결책이 있을수 있음
+	```JAVA
+    @Component
+    @Qualifier("cold")
+    @Qualifier("creamy")
+    public class IceCream implements Dessert { ... }
+	```
+    > 하지만 자바는 동일한 유형의 여러 어노테이션을 같은 항목에 사용할 수 없다. - @Qualifier 복수개 사용 불가
+    > 해결책은 맞춤형 수식자 어노테이션을 정의하는 것
+
+	* 맞춤형 수식자 어노테이션
+	```JAVA
+    @Target({ElementType.CONSTRUCTOR, ElementType.FIELD,
+             ElementType.mETHOD, ElementType.TYPE})
+    @Retention(RetentionPolicy.RUNTIME)
+    @Qualifier
+    public @interface Colde {}
+    ```
+    > @Cold 어노테이션 정의
+
+	```JAVA
+    @Component
+    @Cold
+    @Creamy
+    public class IceCream implements Dessert { ... }
+    ```
+    > @Qualifier를 직접 쓰지 않고 @Qualifier를 정의한 custom qualifier annotation을 정의해서 사용
+    > @Qualifier 어노테이션을 사용하는 것과 문자열로 수식자를 지정하는 것보다 type-safe 하다.
+***
+
+#### 3.4 빈 범위
+* 스프링 애플리케이션에서 생성되는 모든 빈은 기본적으로 싱글톤
+* 빈이 생성될 수 있는 범위
+	* Singleton - 전체 애플리케이션을 위해 빈의 인스턴스가 하나만 생성됨
+	* Prototype - 빈이 주입되거나 어플리케이션 컨텍스트에서 검색 될때마다 빈의 인스턴스 하나 생성
+	* Session - 세션당 빈의 인스턴스 하나 생성
+	* Request - 요청당 빈의 인스턴스 하나 생성
+        ```JAVA
+        @Component
+        @Scope(ConfiguratleBeanFactory.SCOPE_PROTOTYPE)
+        public class Notepad { ... }
+        ```
+        > scope를 변경하기 위해서는 @Scope를 사용하면 된다. (@Component나 @Bean 어노테이션과 함께 사용)
+        > 자바 설정에서는 @Bean과 @Scope을 함께 사용한다.  P101 
+        > XML에서는 &lt;bean&gt; 요소에 scope 어트리뷰트를 사용한다.
+
+***
+
+###### 3.4.1 요청(request)과 세션 범위(session scope) 작업하기
+* 웹어플리케이션에서 주어진 request나 session 범위 내에서 공유하기 위한 빈을 인스턴스화할때 유용한다.
+* 장바구니 예
+	* 장바구니빈이 싱글톤일때와 프로토타입인 경우 장단점 비교
+	* 장바구니 빈은 사용자마다 가져야 하므로, 세션 범위가 알맞음
+
+```JAVA
+@Component
+@SCope (
+	value=WebApplicationContext.SCOPE_SESSION,
+    proxyMode=ScopedProxyMode.INTERFACES)
+public ShoppingCart cart() { ... }
+```
+> * 웹 어플리케이션의 세션당 ShoppingCart 빈의 인스턴스를 생성 (해당 세션에 관해서는 싱글톤)
+> * ScopedProxyMode.INTERFACES - proxyMode 특성
+> > 싱글톤 범위의 빈에 session 또는 reqeust 범위의 빈을 주입할때 발생하는 문제 해결
+
+```JAVA
+@Component
+public class StoreService {
+	@Autowired
+    public void setShoppingCart(ShoppingCart shoppingCart) {
+    	this.shoppingCart = shoppingCart;
+    }
+    ...
+}
+```
+> 어플리케이션 컨텍스트가 로드될때 StoreService 빈이 싱글톤으로 생성 됨
+> 그리고 스프링이 ShoppingCart를 주입하려고 하지만 세션 범위이므로 존재하지 않아서 주입이 안된다.
+> 스프링은 실제 ShoppingCart를 주입하는 대신에 프록시를 주입한다. P103 그림3.1
+
+* ScopedProxyMode.INTERFACES
+	* 프록시가 ShoppingCart의 인터페이스를 구현하고 구현 빈에 위임할 필요가 있다는 의미
+
+* ShoppingCart가 구현클래스인 경우
+	* 스프링이 인터페이스 기반의 프록시를 만들수 없다.
+	* class-based 프록시를 만들기 위해서는 CGLIB를 사용해야 한다.
+	* proxyMode를 ScopedProxyMode.TARGET\_CLASS로 설정해야 한다.
+
+* request scope 도 session scope와 동일하게 와이어링 문제를 야기하므로 scoped proxy로 inject 되어야 한다.
+***
+
+###### 3.4.2 XML로 범위 프록시 선언하기 (Declaring scoped proxies in XML)
+* XML에서는 @Scope와 proxyMode 어트리뷰트를 사용할수 없다.
+* AOP namespace의 새로운 요소를 사용해야 한다.
+```XML
+<bean id="cart" class="com.myapp.ShoppingCart" scope="session">
+	<aop:scoped-proxy />
+</bean>
+```
+> XML에서 @Scope 어노테이션의 proxyMode 어트리뷰트에 대한 대안
+> 빈에 대해 범위 프록시를 생성
+> 기본적으로 타겟 클래스 프록시를 생성하기 위해 CGLIB를 사용한다.
+> proxy-target-class를 false로 해서 인터페이스 기반의 프록시를 생성할 수 있다.
+***
+
+#### 3.5 런타임 값 주입
+* 다른 빈의 프로퍼티나 생성자 인자에 빈 참조를 주입하는 것
+	* 한 개체와 다른 개체의 연결에 관한 것
+* 2장에서는 빈의 프로퍼니타 인자로 하드코딩된 값을 전달했으나 런타임 시에 값을 결정하게 할 수 있다.
+* 스프링이 제공하는 런타임에 값을 평가하는 두 가지 방법
+	* Property placeholders
+	* SpEL, Spring Expression Language
+***
+
+###### 3.5.1 외부 값 주입
+* 프로퍼티 소스를 선언하고 스프링 환경을 통한 프로퍼티 검색이 제일 간단함
+	* P106 코드3.7
+		* 프로퍼티 소스 선언
+		* 프로퍼티 값 조회
+***
+
+* 스프링 환경 더 살펴보기
+	* Environment의 프로퍼티 값을 조회하는 getProperty()의 네가지 변형
+		* String getProperty(String key)
+			* 항상 스트링을 반환
+		* String getProperty(String key, String defaultValue)
+			* 값이 없을 경우 디폴트값을 지정
+		* T getProperty(String key, Class&lt;T&gt; type)
+			* 스트링 이외의 다른 타입에 대한 처리
+		* T getProperty(String key, Class&lt;T&gt; type, T defaultValue)
+			```JAVA
+            int connectionCount = env.getProperty("db.connection.count", Integer.class, 30);
+            ```
+        * 프로퍼티가 정의되어 있지 않다면 null을 리턴 받게 됨
+
+    * getRequiredProperty()
+		* 프로퍼티가 정의되어 있지 않은 경우 IllegalStateException이 발생
+	* containsProperty()
+		* 프로퍼티 존재 확인
+	* getPropertyAsClass()
+		* 프로퍼티를 클래스로 변환
+	* Environment가 제공하는 프로파일 관련 메소드
+		* String[] getActiveProfiles()
+		* String[] getDefaultProfiles()
+		* boolean acceptsProfiles(String... profiles)
+***
+
+* 프로퍼티 플레이스홀더 처리하기
+	* 프로퍼티를 프로퍼티 화일로 관리하며, 플레이스홀더값을 사용하여 빈에 플러그인 한다.
+	```XML
+    <bean id="sgtPeppers"
+    		class="soundsystem.BlankDisc"
+            c:_title="${disc.title}"
+            c:_artist="${disc.artist}" />
+    ```
+
+	* 어플리케이션 컴포넌트를 생성하거나 초기화하기 위해 컴포넌트 스캔과 오토와이어링에 의존한다면, 거기에는 placeholders를 명시할 서ㄹ정파일이나 클래스가 없다.
+		* 대신에 @Value를 사용한다.
+	* placeholder 값을 사용하려면 빈을 등록해야 한다.
+		* PropertySourcePlaceholderConfigurer가 선호된다.
+		* P109 자바설정 사용시 빈 등록
+		* P109 XML설정 사용시 빈 등록
+	* 외부 프로퍼티 해결책은 런타임 시까지 값의 결정을 미루기 위한 방법
+		* 스프링의 Environment와 프로퍼티 소스에서 이름으로 프로퍼티들을 잘 결정할 수 있도록 되어 있다.
+		* SpEL은 반면에 런타임 시 값을 주입하는 보다 일반적인 방법을 제공
+***
+
+###### 3.5.2 스프링 표현식 와이어링 (Wiring with the Spring Expression Language)
+* 런타임 시에 평가하는 표현식을 사용해서 빈의 프로퍼티와 생성자 아규먼트에 값을 와이어링하는 SpEL
+* 다음 기능을 포함
+	* ID로 빈을 참조하는 기능
+	* 메소드 호출과 객체의 프로포티 액세스
+	* 값에 대한 수학적, 관계적, 논리적 연산
+	* 정규 표현식 매칭
+	* 컬렉션 처리
+* 종속객체 주입 외에 다른 목적으로도 사용 - 보안 정의, 모델 데이타 참조 표현식 등
+***
+
+* SpEL 예제
+	* 프레임이 #{ ... } 형식으로 구성
+	* 플레이스홀더는 ${ ... } 형식으로 만들어짐
+	```XML
+    #{1}	-- 가장 간단한 SpEL
+    ```
+	```XML
+    #{T(System).currentTimeMillis()}		-- 현재 시간을 밀리초 단위로 나타냄
+    ```
+	> T()연산자 - java.lang.System의 타입에 대해 평가
+	> static currentTimeMillis() 메소드를 수행
+
+	```XML
+	#{sgtPeppers.artist}		-- ID가 sgtPeppers인 빈의 artist 프로퍼티 값을 평가
+    ```
+    > 해당 빈에서 다른 빈 또는 프로퍼티를 참조 
+
+	```XML
+    #{systemProperties['disc.title']}
+    ```
+    > systemProperties 객체를 통해 시스템 프로퍼티를 참조
+
+* 빈 와이어링 동안 SpEL 사용 방법
+	* 컴포넌트 스캐닝을 통해 생성되는 빈들에게 프로퍼티를 주입하거나 생성자 인수를 주입할 때,
+		* @Value 어노테이션 사용
+		* SpEL도 사용 가능
+		```JAVA
+        public BlankDisc(
+        	@Value("#{systemProperties]'disc.title']{") String title,
+            @Value("#{systemProperties]'disc.artist']{") String artist) {
+            this.title = title;
+            this.artist = artist;
+        }
+        ```
+        > 시스템 프로퍼티를 통해 앨범 타이틀과 아티스트를 얻음
+
+		```JAVA
+        <bean id="sgtPeppers"
+        	class="soundsystem.BlankDisc"
+            c:_title="#{systemProperties['disc.title']}"
+            c:_artist="#{systemProperties['disc.artist']}" />
+        ```
+        > BlankDisc 빈의 XML 선언
+***
+
+* 리터럴 값들 표시하기
+	* 리터럴 정수형, 부동소수점수, String값, 불리언 값등이 표기 가능
+	```JAVA
+    #{3.14159}	- 부동소수점 값의 SpEL 예
+    ```
+  	```JAVA
+    #{9.87E4}	- 숫자는 과학적 표기법으로 표기, 98,700
+    ```
+   	```JAVA
+    #{'Hello'}	- 리터럴 String 값
+    ```
+   	```JAVA
+    #{false}	- 불리언 리터럴
+    ```
+	* 좀 더 복잡한 표현식을 나타내기 위해서는 SpEL 표현식이 필요
+***
+
+* 빈, 프로퍼티, 메소드 참조
+	* SpEL 표현식의 또 다른 역할
+		* ID를 이용한 다른 빈의 참조
+		```JAVA
+        #{sgtPeppers}
+        ```
+        > ID가 sgtPeppers인 빈을 와이어링
+
+		```JAVA
+        #{sgtPeppers.artist}
+        ```
+        > ID가 sgtPeppers인 빈의 artist 프로퍼티를 참조
+
+		```JAVA
+        #{artistSelector.selectArtist()}
+        ```
+        > ID가 artistSelector인 빈의 selectArtist() 메소드 호출
+
+		```JAVA
+        #{artistSelector.selectArtist()?.toUpperCase()}
+        ```
+        > ID가 artistSelector인 빈의 selectArtist() 메소드 호출 후 null이 아니면 toUpperCase() 실행
+***
+
+* 표현식에서 타입 사용하기
+	* T() 연산자
+	```JAVA
+    T(java.lang.Math)
+    ```
+    > Math class를 의미
+    > Class 타입의 빈 프로퍼티에 이 값을 할당할수 있음
+    > T() 연산자의 실제 값으로 해당 클래스의 정적 메소드와 상수를 액세스할수 있음
+
+	```JAVA
+    T(java.lang.Math).PI
+    ```
+    > pi 값을 빈 프로퍼티에 와이어링
+
+	```JAVA
+    T(java.lang.math).random()
+    ```
+    > 임의의 숫자(0에서 1사이)를 빈 프로퍼티에 할당하는 방법
+***
+
+* SpEL 연산자
+	* 표현식에서 값에 적용할 수 있는 다양한 연산을 제공
+		* P115 표3.1
+
+	```JAVA
+    #{2 * T(java.lang.Math).PI * circle.radius}
+    ```
+    > pi값에 2를 곱한 값을 circle빈의 radius 프로퍼티값과 곱함
+
+	```JAVA
+    #{counter.total == 100}
+    ```
+    > 두 개의 숫자가 동일한지를 비교하기 위해 이중등호 연산자를 사용
+
+	```JAVA
+    #{counter.total eq 100}
+    ```
+    > ==과 동일
+    > 표현식은 불리언으로 결과가 표시 됨
+
+	```JAVA
+    #{scoreboard.score > 1000 ? "Winner!" : "Loser"}
+    ```
+    > 삼항연산자
+    > 엘비스 연산자 - ?: 형태
+***
+
+* 정규 표현식 사용하기
+	* 텍스트가 특정 패턴과 일치하는지 여부 확인을 위한 matches 연산자 제공
+	* Matches 평가 결과는 불리언 값
+	```JAVA
+    #{admin.email matches '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.com'}
+    ```
+    > String이 유효한 이메일 주소를 포함하는지 체크
+***
+
+* 컬렉션 사용하기
+	* SpEL은 컬렉션과 배열을 이용하여 작업 가능
+	```JAVA
+    #{jukebox.songs[4].title}
+    ```
+    > 아이디가 jukebox인 빈의 songs 컬렉션 프로퍼티의 다섯번째 요소의 title 프로퍼티를 조회
+
+	```JAVA
+    #{jukebox.songs[T(java.lang.Math).random() * jukebox.songs.size()].title}
+    ```
+    > jukebox에서 song 하나를 무작위로 선택하는 경우
+
+	* selection 연산자
+		* 컬렉션을 컬렉션 서브셋으로 필터링 할때 사용
+		* .?[]
+            ```JAVA
+            #{jukebox.songs.?[artist eq 'Aerosmith']}
+            ```
+            > jukebox의 song 전체 리스틍에서 artisst가 Aerosmith인 노래를 필터링
+
+		* .^[], .$[] 연산자
+			* 컬렉션에서 첫번째와 마지막에 일치하는 항목을 조회
+		* .![] 연산자
+			* 컬렉션의 요소로부터 프로퍼티를 새로운 컬렉션으로 모음
+			```JAVA
+            #{jukebox.songs.?[artist eq 'Aerosmith'].![title]}
+            ```
+            > Aerosmith의 모든 노래의 타이틀을 새로운 컬렉션으로 조회
+***
+
+#### 3.6 요약
+* 스프링 프로파일 사용
+	* 빈은 하나 이상의 활성화된 프로파일에 매칭시켜 런타임 시의 고유 환경 빈 사용시의 문제를 해결 함
+	* 런타임 시 빈을 조건부로 만드는 방법
+
+* @Conditional 어노테이션
+	* 주어진 조건의 결과에 따라 빈을 생성/비생성 하는 일반적인 방법
+	* 스프링4가 제공하는 더욱 일반적 방법
+
+* 오토와이어링의 애매함을 해결하기 위한 방법
+	* primary beans
+		* 간단하지만 제한적
+	* qualifiers
+		* 오토와이어의 후보 대상을 좁혀주는 역할
+	* 커스텀 qualifier 어노테이션 생성 방법
+
+* 빈의 scope
+	* 싱글톤 scope
+	* 프로토타입 scope
+	* reqeust scope
+	* session scope
+
+* Spring Expression Language
+***
+
+## 4장 애스펙트 지향 스프링
+* 다룰내용
+	* Basics of aspect-oriented programming
+	* POJO를 사용하여 애스펙트 만들기
+	* @AspectJ 어노테이션 사용하기
+	* AspectJ 애스펙트에 종속객체 주입하기
+
+* 한 기능이 애플리케이션 여러곳에 적용되어야 할 경우, 적용 부분마다 이 기능을 호출하는 일을 바람직하지 않다.
+* 횡단 관심사 (cross-cutting concerns)
+	* 한 애플리케이션의 여러 부분에 걸쳐 있는 기능
+	* 비즈니스 로직과는 분리되는 기능
+	* AOP는 이러한 횡단 관심사의 분리를 위한 것임
+
+* DI의 목적
+	* 객체 간 결합도를 낮추는 것
+* AOP의 목적
+	* 횡단 관심사와 이에 영향 받는 객체 간 결합도를 낮추는 것
+***
+
+#### 4.1 AOP란 무엇인가?
