@@ -1239,3 +1239,1043 @@ public class StoreService {
 ***
 
 #### 4.1 AOP란 무엇인가?
+* 횡단 관심사
+	* 한 애플리케이션의 여러 부분에 영향을 주는 기능
+		* 보안, 로깅, 트랜잭션, DB Connection 등
+		* P123 그림4.1
+* 공통 기능의 재사용
+	* 상속, 위임
+	* AOP
+		* 전체 코드 기반에 흩어져 있는 주요 관심 사항이 하나의 장소로 응집된다는 장점
+		* 서비스 모듈이 자신의 주요 관심 사항에 대한 코드만 포함하면 됨
+***
+
+###### 4.1.1 AOP 용어 정의
+* P124 그림4.2
+* 어드바이스
+	* 애스펙트가 해야하는 작업과 언제 그 작업을 수행해야 하는지를 정의한 것
+	* 종류
+		* before, after, after-returning, after-throwing, around의 어드바이스가 존재
+* 조인 포인트
+	* 어드바이스를 적용할 수 있는 곳, 어플리케이션에 애스펙트를 끼워넣을 수 있는 지점
+	* 메소드 호출 지점, 예외발생, 필드 값 수정 부분 등
+* 포인트컷
+	* 애스펙트가 '어디서' 할지를 정의
+	* 클래스나 메소드 명을 직접 지정하거나 매칭 패턴을 나타내는 정규식으로 정의
+* 애스펙트
+	* 어드바이스와 포인트컷을 합친 것
+* 인트로덕션
+	* 기존 클래스에 코드 변경 없이 새 메소드가 멤버 변수를 추가하는 기능
+	* 스프링 Roo에서 많이 활용된다고 함
+* 위빙
+	* 타겟 객체에 애스펙트를 적용해서 새로운 프록시 객체를 생성하는 절차
+***
+
+###### 4.1.2 스프링의 AOP 지원
+* 스프링의 AOP 지원 형태
+	* Classic Spring proxy-based AOP
+	* Pure-POJO aspects
+	* @AspectJ annotation-driven aspects
+	* Injected AspectJ aspects (스프링 전 버전에서 사용 가능)
+* 스프링 프록시
+	* 동적 프록시 기반으로 만들어짐
+	* 메소드 interception으로만 제한 됨
+	* 메소드 interception 이상의 기능이 필요하면 AspectJ를 이용하여 애스펙트를 구현해야 함
+***
+
+* 스프링 어드바이스는 자바로 작성
+	* 모든 어드바이스는 표준 자바 클래스로 작성
+	* 포인트컷은 보통 XML 설정 파일에 정의
+* 스프링 애스펙트
+	* P128 그림4.3 
+* 실행시간에 만드는 스프링 어드바이스
+	* 빈을 감싸는 프록시 객체를 실행 시간에 생성한다.
+	* 프록시 객체는 타겟 객체로 위장해서 어드바이스 대상 메소드의 호출을 가로채고, 타겟 객체로 호출을 전달한다.
+* 스프링은 메소드 조인 포인트만 지원
+	* AspectJ나 다른 AOP 프레임워크는 
+		* 플드나 생성자 조인 포인트까지 제공
+***
+
+#### 4.2 포인트컷을 이용한 조인 포인트 선택
+* 스프링에서 포인트컷은 AspectJ의 포인트컷 표현식 언어를 사용
+* 스프링은 AspectJ에서 사용할 수 있는 포인트컷 지정자에 속하는 것만 지원한다.
+* 스프링 AOP에서 지원되는 AspectJ 포인트컷 지정자
+	* P130 표4.1
+	* AspectJ의 다른 지정자를 사용하면 IllegalArgumentException이 발생
+***
+
+###### 4.2.1 포인트컷 작성
+* 애스펙트를 나타내기 위해 애스펙트 포인트컷 대상을 정의
+	* Performance 인터페이스 - 영화 , 콘서트와 같은 공연을 나타냄
+	* perform() 메소드를 트리거링 하는 애스펙트를 작성
+	* P131 그림4.4 perform() 메소드가 실행될때마다 어드바이스 하기 위한 포인트컷 표현식
+	```XML
+    execution (* concert.Performance.perform(..))
+    ```
+    > 파라미터 갯수와 리턴 타입에 상관없이 perform 메소드에 대해서 적용하라는 의미
+
+	```XML
+    execution (* concert.Performance.perform(..)) && within(concert.*)
+    ```
+    > 포인트컷 범위를 concert 패키지로 제한
+***
+
+###### 4.2.2 포인트컷에서 빈 선택하기
+* bean() 지정자
+	```XML
+    execution(* concert.Performance.perform()) and bean('woodstock')
+    ```
+    > ID가 woodstock인 빈으로 제한
+***
+
+#### 4.3 애스펙트 어노테이션 만들기
+* AspectJ 5에 도입된 주요 기능
+	* 어노테이션을 사용하여 애스펙트를 만들 수 있는 기능
+	* 어노테이션을 조금 사용해 어떤 클래스든 간단하게 애스펙트로 바꿀 수 있게 됨
+		* @AspectJ 어노테이션
+***
+
+###### 4.3.1 애스펙트 정의하기
+* 관객을 공연에 적용할 수 있는 애스펙트로 정의
+* P133 코드4.1 Audience 클래스
+	* @Aspect라는 어노테이션이 붙어 있음 - POJO가 아니라 애스펙트라는 의미
+	* P134 표4.2 - 어드바이스용 어노테이션 5가지
+	* Performance의 perform() 메소드 실행이 트리거가 됨
+* 한번만 포인트컷을 정의하고 필요할때마다 참조하는 방법
+	* 재사용 가능한 포인트컷 정의
+	```JAVA
+    @Pointcut("execution(** concert.Performance.perform(..))")
+    public void performance(){)
+    
+    @Before("performance()") <-- 이런 형태로 사용(참조형태)
+    ```
+
+* 애스펙트 사용 순서
+	1. @Aspect 어노테이션이 붙은 빈 정의
+	2. @Aspect 클래스 안에 @Before, @After 등의 어노테이션(어드바이스)이 붙은 메소드 작성
+	3. @Bean을 사용해서 와이어링
+	4. 설정 사용
+		4-1 JavaConfig
+			@EnableAspectJAutoProxy 어노테이션을 통해 오토-프록싱을 사용 - P136 코드4.3
+        4-2 XML 설정
+        	aop 네임스페이스에서 <aop:aspectj-autoproxy> 사용 - P137 코드4.4
+
+* @AspectJ 어노테이션을 사용하더라도 여전히 메소드 참조 프록싱만 사용할수 있는 제약점이 있다.
+* 더 많은 AOP의 기능을 사용하려면 AspectJ 런타임을 사용해야 한다.
+***
+
+###### 4.3.2 around 어드바이스 만들기
+* 하나의 어드바이스 메소드 내에서 before와 after 어드바이스 모두를 작성할때 필수적이다.
+* P138 코드4.5 before와 advice 대신 around 하나로 재작성
+	> 파라미터로 ProceedingJoinPoint의 proceed 메소드를 호출해야 함
+***
+
+###### 4.3.3 어드바이스에서 파라미터 처리하기
+* 앞의 예제에서 BlankDisc 클래스를 다시 살펴 봄
+	* 각 트랙이 얼마나 많이 호출되었는지 세기 원함
+	* playTrack()을 어드바이스하는 애스펙트인 TrackCounter를 생성
+		* P140 코드4.6 트랙 재생횟수를 카운트하기 위해 파라미터화된 어드바이스 사용하기
+		* 명명된 포인트컷을 사용하기 위해 @Pointcut을 사용
+		* 어드바이스 전에 적용되는 메소드를 선언하기 위해 @Before를 사용
+***
+
+###### 4.3.4 인트로덕션 어노테이션
+* 오픈클래스
+	* 루비나 그루비 등에서 지원하는 객체나 클래스의 정의를 변경하지 않고 실행 중에 새로운 메소드를 추가하는 기능
+* AOP에서는 객체의 기존 메소드 주위(around)에 새로운 기능을 추가했음
+	* AOP 개념을 이용해, 애스펙트는 스프링 빈에 새로운 메소드를 추가 함
+	* P143 그림4.7
+* 추가된 인터페이스의 메소드가 호출되면, 프록시는 새로운 인터페이스의 구현체를 제공하는 다른 객체에 호출을 위임한다.
+	```JAVA
+    package concert;
+    
+    public interface Encoreable {
+    	void performEncore();
+    }
+    ```
+***
+
+## 5장 스프링 웹 애플리케이션 만들기
+* 다룰내용
+	* 요청을 스프링 컨트롤러에 매핑하기
+	* 파라미터 폼을 투명하게 바인딩하기
+	* 제출 폼 검증하기
+***
+
+#### 5.1 스프링 MVC 시작하기
+* 스프링 MVC가 클라이언트로부터 요청을 받아 클라이언트에 돌려주는 과정을 살펴보자.
+***
+
+###### 5.1.1 스프링 MVC를 이용한 요청 추적
+* P162 그림5.1 원하는 결과를 얻기 위한 여러 단계에 대한 요청 처리 정보
+	* 요청1
+		* 사용자가 요구하는 내용을 전달 - Dispatcher가 받음
+		* 프론트 컨트롤러 서블릿
+	* 요청2
+		* 요청을 처리할 컨트롤러를 찾아주는 핸들러 매핑
+	* 요청3
+		* 요청을 처리할 컨트롤러
+	* 요청4
+		* 모델과 논리뷰 이름을 DispatcherServlet에게 리턴
+	* 요청5
+		* 뷰 리졸버에게 논리적으로 주어진 뷰의 이름과 실제로 구현된 뷰를 매핑 처리
+	* 요청6
+		* 뷰의 구현
+	* 요청7
+		* 클라이언트에게 응답
+***
+
+###### 5.1.2 스프링 MVC 설정하기
+* 스프링 MVC를 설정하는 간단한 접근법을 살펴보자
+* DispatcherServlet 설정하기
+	* 이전에는 web.xml로 설정을 했으나 Java를 사용
+	* P165 코드5.1 DispatcherServlet 설정하기
+	```JAVA
+    package com.chap05.spittr.config;
+
+    import org.springframework.web.servlet.support.AbstractAnnotationConfigDispatcherServletInitializer;
+
+    public class SpittrWebAppInitializer extends AbstractAnnotationConfigDispatcherServletInitializer {
+
+        protected Class<?>[] getRootConfigClasses() {
+            return new Class<?>[] {
+                    RootConfig.class
+            };
+        }
+
+        protected Class<?>[] getServletConfigClasses() {	<-- 설정 클래스를 명시
+            return new Class<?>[] {
+                    WebConfig.class
+            };
+        }
+
+        protected String[] getServletMappings() {		<-- DispatcherServlet을 /에 매핑
+            return new String[] {
+                "/"
+            };
+        }
+    }
+    ```
+    > AbstractAnnotationConfigDispatcherServletInitializer를 상속받으면 됨
+
+* 두 애플리케이션 컨텍스트에 대한 이야기
+	* DispatcherServlet
+		* 컨트롤러, 뷰 리졸버, 핸들러 매핑과 같은 웹 컴포넌트가 포함된 빈을 로딩
+		* getServletConfigClasses에서 리턴된 설정 클래스들이 관련 빈들을 정의하는데 사용
+	* ContextLoaderListener
+		* 애플리케이션 내의 그 외의 다른 빈을 로딩
+		* getRootConfigClass에서 리턴된 설정 클래스들이 관련 빈들을 정의하는데 사용
+	* 클래스를 사용한 DispatchetServlet 설정방식
+		* 톰캣7 이상에서만 동작됨
+***
+
+* 스프링 MVC 활성화하기
+	* XML
+		* &lt;mvc:annotation-driven&gt; 이 활성화를 위해 사용
+	* JavaConfig
+		* WebConfig
+            * @EnableWebMvc 사용
+            ```JAVA
+            package com.chap05.spittr.config;
+
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+
+            @Configuration
+            @EnableWebMvc
+            public class WebConfig {
+
+            }
+            ```
+            > 더 해야할 사항
+            >> 뷰 리졸버 설정 - 디폴트는 BeanNameViewResolver를 사용함
+            >> 컴포넌트 스캔 활성화 필요
+            >> 고정 리소스들에 대한 모든 요청을 처리하고 있으므로 분리 필요
+
+            * 추가 설정
+            ```JAVA
+            package com.chap05.spittr.config;
+
+            import org.springframework.context.annotation.Bean;
+            import org.springframework.context.annotation.ComponentScan;
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.web.servlet.ViewResolver;
+            import org.springframework.web.servlet.config.annotation.DefaultServletHandlerConfigurer;
+            import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+            import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+            import org.springframework.web.servlet.view.InternalResourceViewResolver;
+
+            @Configuration
+            @EnableWebMvc
+            @ComponentScan("com.chap05.spittr")
+            public class WebConfig extends WebMvcConfigurerAdapter {
+                @Bean
+                public ViewResolver viewResolver() {
+                    InternalResourceViewResolver resolver = new InternalResourceViewResolver();
+
+                    resolver.setPrefix("/WEB-INF/views/");
+                    resolver.setSuffix(".jsp");
+                    resolver.setExposeContextBeansAsAttributes(true);
+                    return resolver;
+                }
+
+                public void configureDefaultServeletHandling(DefaultServletHandlerConfigurer configurer) {
+                    configurer.enable();
+                }
+            }
+            ```
+            > @ComponentScan 추가됨
+            > ViewResolver 추가됨
+            > configureDefaultServletHandling() - enable()을 호출함으로써 DispatcherServlet이 고정적인 리소스들에 대한 요청을 자신이 처리하지 않고 서블릿 컨테이너의 디폴트 서블릿에 전달하도록 한다.
+		* RootConfig
+			* 이 챕터에서는 간단한 설정만 사용하자.
+			```JAVA
+            package com.chap05.spittr.config;
+
+            import org.springframework.context.annotation.ComponentScan;
+            import org.springframework.context.annotation.Configuration;
+            import org.springframework.context.annotation.FilterType;
+            import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+
+            @Configuration
+            @ComponentScan(basePackages = {"com.chap05.spittr"},
+                excludeFilters = {
+                        @ComponentScan.Filter(type= FilterType.ANNOTATION, value= EnableWebMvc.class)
+                })
+            public class RootConfig {
+            }
+            ```
+            > 빈 등로을 위해 @ComponentScan을 사용해야 함
+***
+
+###### 5.1.3 Spittr 애플리케이션 소개
+* 간단한 마이크로 블로깅 서비스 작성
+	* spitter(어플리케이션 사용자)와 spittles(사용자가 쓴 상태 업데이트)를 가진다.
+	* 웹 레이어 발전 -> spittles를 처리할 컨트롤러 작성 -> spitter 사용자 가입 폼 처리 순서로 개발
+***
+
+#### 5.2 간단한 컨트롤러 작성하기
+* 간단한 HomeController
+	* P171 코드5.3
+	```JAVA
+    package com.chap05.spittr.web;
+
+    import org.springframework.stereotype.Controller;
+    import org.springframework.web.bind.annotation.RequestMapping;
+
+    import static org.springframework.web.bind.annotation.RequestMethod.GET;
+
+    @Controller
+    public class HomeController {
+        @RequestMapping(value = "/", method=GET)
+        public String home() {
+            return "home";
+        }
+    }
+    ```
+    * P172 코드5.4 간단한게 JSP로 정의된 Spittr 홈페이지
+    ```XML
+    <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+    <%@ page session="false" %>
+    <html>
+      <head>
+        <title>Spitter</title>
+        <link rel="stylesheet"
+              type="text/css" 
+              href="<c:url value="/resources/style.css" />" >
+      </head>
+      <body>
+        <h1>Welcome to Spitter</h1>
+
+        <a href="<c:url value="/spittles" />">Spittles</a> |
+        <a href="<c:url value="/spitter/register" />">Register</a>
+      </body>
+    </html>
+    ```
+***
+
+###### 5.2.1 컨트롤러 테스팅
+* HomeController는 어노테이션을 배제하면 POJO임
+* 테스트코드
+	```JAVA
+    package com.chap05.spittr.web;
+
+    import org.junit.Test;
+
+    import static org.junit.Assert.assertEquals;
+
+    public class HomeControllerTest {
+        @Test
+        public void testHomePage() throws Exception {
+            HomeController controller = new HomeController();
+            assertEquals("home", controller.home());
+        }
+    }
+    ```
+    > 단순하게 메소드의 호출 결과만 테스트하고 있음
+    > MVC 컨트롤러의 테스트로는 적절하지 않음
+
+* 수정된 테스트 코드
+	```JAVA
+    package com.chap05.spittr.web;
+
+    import static org.junit.Assert.assertEquals;
+    import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+    import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+    import static org.springframework.test.web.servlet.setup.MockMvcBuilders.*;
+
+    import org.junit.Test;
+    import org.springframework.test.web.servlet.MockMvc;
+
+    public class HomeControllerTest {
+        @Test
+        public void testHomePage() throws Exception {
+            HomeController controller = new HomeController();
+            assertEquals("home", controller.home());
+        }
+
+        @Test
+        public void testHomePage2() throws Exception {
+            HomeController controller = new HomeController();
+            MockMvc mockMvc = standaloneSetup(controller).build();
+            mockMvc.perform(get("/"))
+                    .andExpect(view().name("home"));
+        }
+    }
+    ```
+    > HomeController를 확실히 테스트할 수 있음
+    > "/"에 GET 요청을 발생시켜 결과 뷰 이름이 home 인지 여부를 체크
+***
+
+###### 5.2.2 클래스 레벨 요청 처리 정의하기
+* P174 코드 5.7 HomeController의 @RequestMapping 분할하기
+    ```JAVA
+    package com.chap05.spittr.web;
+
+    import org.springframework.stereotype.Controller;
+    import org.springframework.web.bind.annotation.RequestMapping;
+
+    import static org.springframework.web.bind.annotation.RequestMethod.GET;
+
+    @Controller
+    @RequestMapping({"/", "/homepage"})
+    public class HomeController {
+        @RequestMapping(method=GET)
+        public String home() {
+            return "home";
+        }
+    }
+    ```
+    > 경로 매핑이 클래스 레벨로 변경 됨 - 모든 메소드에 적용됨
+    > 결론적으로 실제 변경된 부분은 없음
+    > "/homepage" 맵핑을 추가해 복수개의 맵핑 처리도 가능함
+    > 
+***
+
+###### 5.2.3 뷰에 모델 데이터 전달하기
+* 목록을 보여주는 새로운 메소드 추가
+	* 데이터 처리를 위한 저장소 추가
+	```JAVA
+    package com.chap05.spittr.data;
+
+    import com.chap05.spittr.Spittle;
+
+    import java.util.List;
+
+    public interface SpittleRepository {
+        List<Spittle> findSpittles(long max, int count);
+    }
+
+    ```
+    > max : 리턴되어야 하는 Spittle의 최대 ID값
+    > count : 리턴되는 Spittle 객체의 총 갯수
+
+	* Spittle 클래스
+		* P176 코드 5.8
+		* 메시지, 타임스탬프, 위치의 위도/경도 프로퍼티
+***
+
+* 새로운 컨트롤러에 대한 테스트 코드
+	* P178 코드5.9
+	```JAVA
+    package com.chap05.spittr.web;
+
+    import com.chap05.spittr.Spittle;
+    import com.chap05.spittr.data.SpittleRepository;
+    import org.junit.Test;
+    import org.springframework.test.web.servlet.MockMvc;
+    import org.springframework.web.servlet.view.InternalResourceView;
+
+    import java.util.ArrayList;
+    import java.util.Date;
+    import java.util.List;
+
+    import static org.junit.matchers.JUnitMatchers.hasItems;
+    import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+    import static org.springframework.test.web.servlet.setup.MockMvcBuilders.*;
+    import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
+    import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+
+    public class SpittleControllerTest {
+       @Test
+        public void shouldShowRecentSpittles() throws Exception {
+            List<Spittle> expectedSpittles = createSpittleList(20);
+            SpittleRepository mockRepository = mock(SpittleRepository.class);
+
+            when(mockRepository.findSpittles(Long.MAX_VALUE, 20))
+                    .thenReturn(expectedSpittles);
+
+            SpittleController controller = new SpittleController(mockRepository);
+            MockMvc mockMvc = standaloneSetup(controller)
+                    .setSingleView(
+                            new InternalResourceView("/WEB-INF/vies/spittles.jsp"))
+                    .build();
+
+            mockMvc.perform(get("/spittles"))
+                    .andExpect(view().name("spittles"))
+                    .andExpect(model().attributeExists("spittleList"))
+                    .andExpect(model().attribute("spittleList",
+                            hasItems(expectedSpittles.toArray())));
+        }
+
+        private List<Spittle> createSpittleList(int count) {
+            List<Spittle> spittles = new ArrayList<Spittle>();
+
+            for (int i = 0; i < count; i++) {
+                spittles.add(new Spittle("Spittle " + i, new Date()));
+            }
+            return spittles;
+        }
+    }
+    ```
+***
+
+* SpittleController
+	```JAVA
+    package com.chap05.spittr.web;
+
+    import com.chap05.spittr.data.SpittleRepository;
+    import org.springframework.beans.factory.annotation.Autowired;
+    import org.springframework.stereotype.Controller;
+    import org.springframework.ui.Model;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestMethod;
+
+    @Controller
+    @RequestMapping("/spittles")
+    public class SpittleController {
+        private SpittleRepository spittleRepository;
+
+        @Autowired
+        public SpittleController(SpittleRepository spittleRepository) {
+            this.spittleRepository = spittleRepository;
+        }
+
+        @RequestMapping(method = RequestMethod.GET)
+        public String spittles(Model model) {
+            model.addAttribute(spittleRepository.findSpittles(Long.MAX_VALUE, 20));
+
+            return "spittles";
+        }
+    }
+    ```
+    > spittles 메소드는 findSpittles에서 리턴받은 리스트를 model에 담아서 리턴한다.
+    > addAttribute가 키값 없이 호출되면, 키는 값으로 설정된 객체 타입으로 추측한다. 여기서는 spittList가 된다.
+    > model 대신 java.util.Map을 사용해도 된다.
+
+	* 모델 내의 데이터 접근
+		* 뷰가 JSP면, 모델 데이터는 request attribute로 request에 복사 된다.
+***
+#### 5.3 요청 입력받기
+* 클라이언트가 서버로 데이터를 전달하는 방법 in 스프링 MVC
+	* Query parameters
+	* Form parameters
+	* Path variables
+***
+
+###### 5.3.1 쿼리 파라미터 입력받기
+* 페이징 구현을 위해 다음 파라미터 입력이 필요 함
+	* A before parameter (which indicates the ID of the Spittle that all Spittle objects in the results are before)
+	* A count parameter (which indicates how many spittles to include in the result)
+
+* 페이징 메소드 테스트
+	```JAVA
+      @Test
+      public void shouldShowPagedSpittles() throws Exception {
+        List<Spittle> expectedSpittles = createSpittleList(50);
+        SpittleRepository mockRepository = mock(SpittleRepository.class);
+        when(mockRepository.findSpittles(238900, 50))
+            .thenReturn(expectedSpittles);
+
+        SpittleController controller = new SpittleController(mockRepository);
+        MockMvc mockMvc = standaloneSetup(controller)
+            .setSingleView(new InternalResourceView("/WEB-INF/views/spittles.jsp"))
+            .build();
+
+        mockMvc.perform(get("/spittles?max=238900&count=50"))
+          .andExpect(view().name("spittles"))
+          .andExpect(model().attributeExists("spittleList"))
+          .andExpect(model().attribute("spittleList", 
+                     hasItems(expectedSpittles.toArray())));
+      }
+    ```
+	> spittles에 대한 max와 count 파라미터 값을 넘겨 받는 부분이 추가됨
+
+* 컨트롤러의 목록조회 메소드 수정
+	```JAVA
+    package com.chap05.spittr.web;
+
+    import com.chap05.spittr.Spittle;
+    import com.chap05.spittr.data.SpittleRepository;
+    import org.springframework.beans.factory.annotation.Autowired;
+    import org.springframework.stereotype.Controller;
+    import org.springframework.web.bind.annotation.RequestMapping;
+    import org.springframework.web.bind.annotation.RequestMethod;
+    import org.springframework.web.bind.annotation.RequestParam;
+
+    import java.util.List;
+
+    @Controller
+    @RequestMapping("/spittles")
+    public class SpittleController {
+        private static final String MAX_LONG_AS_STRING = Long.toString(Long.MAX_VALUE);
+
+        private SpittleRepository spittleRepository;
+
+        @Autowired
+        public SpittleController(SpittleRepository spittleRepository) {
+            this.spittleRepository = spittleRepository;
+        }
+
+        @RequestMapping(method = RequestMethod.GET)
+        public List<Spittle> spittles(@RequestParam(value = "max", defaultValue = MAX_LONG_AS_STRING) long max,
+                                      @RequestParam(value = "count", defaultValue = "20") int count) {
+            return spittleRepository.findSpittles(max, count);
+        }
+    }
+
+    ```
+    > @RequestParam이 추가됐음
+    > defaultValue를 사용해서 파라미터가 없을 경우는 기본값 사용
+***
+
+###### 5.3.2 패스 파라미터를 통한 입력 받기
+* 파라미터 입력 방법
+	* 쿼리 파라미터 방식
+		* /spittles/show?spittle_id=12355와 같은 형태
+	* 패스 파라미터 방식
+		* /spittles/12345 형태
+
+* P186 코드5.12 패스 변수로 ID를 명시하는 Spittle의 요청에 대한 테스트
+	* 테스트코드
+	```JAVA
+        @Test
+        public void testSpittle() throws Exception {
+            Spittle expectedSpittle = new Spittle("Hello", new Date());
+            SpittleRepository mockRepository = mock(SpittleRepository.class);
+
+            when(mockRepository.findOne(12345)).thenReturn(expectedSpittle);
+
+            SpittleController controller = new SpittleController(mockRepository);
+            MockMvc mockMvc = standaloneSetup(controller).build();
+
+            mockMvc.perform(get("/spittles/12345"))
+                    .andExpect(view().name("spittle"))
+                    .andExpect(model().attributeExists("spittle"))
+                    .andExpect(model().attribute("spittle", expectedSpittle));
+        }
+    ```
+    
+	* 패스 변수로 받는 메소드 코드
+	```JAVA
+    @RequestMapping(value = "/{spittleId}", method = RequestMethod.GET)
+    public String spittle (@PathVariable("spittleId") long spittleId, Model model) {
+        model.addAttribute(spittleRepository.findOne(spittleId));
+        return "spittle";
+    }
+    ```
+	> 패쓰 변수를 받기 위해 플레이스홀더 (중괄호 {와}로 묶인 부분) 사용
+	> @PathVariable long spittleId와 같이 value를 생략한 형태도 가능
+
+* 화면 jsp
+	```XML
+    <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+    <html>
+      <head>
+        <title>Spitter</title>
+        <link rel="stylesheet" 
+              type="text/css" 
+              href="<c:url value="/resources/style.css" />" >
+      </head>
+      <body>
+        <div class="spittleView">
+          <div class="spittleMessage"><c:out value="${spittle.message}" /></div>
+          <div>
+            <span class="spittleTime"><c:out value="${spittle.time}" /></span>
+          </div>
+        </div>
+      </body>
+    </html>
+    ```
+
+* 장단점
+	* 쿼리/패스 파라미터 방식은 작은 데이터 전달에는 적당
+	* 폼의 많은 데이터 전달에는 불편하고 제약이 많음
+***
+
+#### 5.4 폼 처리하기
+* 두가지 과정이 있음
+	* 폼 보여주기
+	* 폼을 통해 제출한 데이터 처리
+* 폼 표시를 위한 컨트롤러 - SpitterController
+    ```JAVA
+    package com.chap05.spittr.web;
+
+    import org.springframework.stereotype.Controller;
+    import org.springframework.web.bind.annotation.RequestMapping;
+
+    import static org.springframework.web.bind.annotation.RequestMethod.GET;
+
+    @Controller
+    @RequestMapping("/spitter")
+    public class SpitterController {
+        @RequestMapping(value = "/register", method = GET)
+        public String showRegistrationForm() {
+            return "registerForm";
+        }
+    }
+    ```
+
+* SpitterController 테스트 코드
+	```JAVA
+    package com.chap05.spittr.web;
+
+    import org.junit.Test;
+    import org.springframework.test.web.servlet.MockMvc;
+
+    import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+    import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+    import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
+
+    public class SpitterControllerTest {
+        @Test
+        public void shouldShowRegistration() throws Exception {
+            SpitterController controller = new SpitterController();
+            MockMvc mockMvc = standaloneSetup(controller).build();
+            mockMvc.perform(get("/spitter/register"))
+                    .andExpect(view().name("registerForm"));
+        }
+    ```
+
+* 등록폼 렌더링용 JSP
+	* P190 코드5.15 등록 폼을 렌더링하기 위한 JSP
+	```XML
+    <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+    <%@ page session="false" %>
+    <html>
+      <head>
+        <title>Spitter</title>
+        <link rel="stylesheet" type="text/css" 
+              href="<c:url value="/resources/style.css" />" >
+      </head>
+      <body>
+        <h1>Register</h1>
+
+        <form method="POST">
+          First Name: <input type="text" name="firstName" /><br/>
+          Last Name: <input type="text" name="lastName" /><br/>
+          Email: <input type="email" name="email" /><br/>
+          Username: <input type="text" name="username" /><br/>
+          Password: <input type="password" name="password" /><br/>
+          <input type="submit" value="Register" />
+        </form>
+      </body>
+    </html>
+    ```
+    > action 파라미터가 없으므로 submit하면 동일한 URL이 다시 호출된다.
+***
+
+###### 5.4.1 폼 처리 컨트롤러 작성
+* 등록 폼에서 POST 요청 -> 컨트롤러는 폼 데이터를 받아서 Spitter 객체로 이 폼을 저장해야 함
+* 폼 처리 컨트롤러 테스트 코드
+	* P191 코드5.16 폼 처리 컨트롤러를 테스트하는 코드
+	```JAVA
+        @Test
+        public void shouldProcessRegistration() throws Exception {
+            SpitterRepository mockRepository = mock(SpitterRepository.class);
+            Spitter unsaved = new Spitter("jbauer", "24hours", "Jack", "Bauer", "jbauer@ctu.gov");
+            Spitter saved = new Spitter(24L, "jbauer", "24hours", "Jack", "Bauer", "jbauer@ctu.gov");
+            when(mockRepository.save(unsaved)).thenReturn(saved);
+
+            SpitterController controller = new SpitterController(mockRepository);
+            MockMvc mockMvc = standaloneSetup(controller).build();
+
+            mockMvc.perform(post("/spitter/register")
+                    .param("firstName", "Jack")
+                    .param("lastName", "Bauer")
+                    .param("username", "jbauer")
+                    .param("password", "24hours")
+                    .param("email", "jbauer@ctu.gov"))
+                    .andExpect(redirectedUrl("/spitter/jbauer"));
+
+            verify(mockRepository, atLeastOnce()).save(unsaved);
+        }
+    ```
+	> SpitterRepository의 모사 구현의 설정과 컨트롤러를 생성
+	> 실행위한 MockMvc를 설정 및 저장 후 리다이렉션도 테스트
+
+* 폼 처리 컨트롤러 - P192 코드5.17 새로운 사용자를 등록하기 위한 폼을 제출하기
+    ```JAVA
+    package com.chap05.spittr.web;
+
+    import org.springframework.beans.factory.annotation.Autowired;
+    import org.springframework.stereotype.Controller;
+    import org.springframework.web.bind.annotation.RequestMapping;
+
+    import static org.springframework.web.bind.annotation.RequestMethod.GET;
+    import static org.springframework.web.bind.annotation.RequestMethod.POST;
+
+    @Controller
+    @RequestMapping("/spitter")
+    public class SpitterController {
+        private SpitterRepository spitterRepository;
+
+        @Autowired
+        public SpitterController(SpitterRepository spitterRepository) {
+            this.spitterRepository = spitterRepository;
+        }
+
+        @RequestMapping(value = "/register", method = GET)
+        public String showRegistrationForm() {
+            return "registerForm";
+        }
+
+        @RequestMapping(value = "/register", method = POST)
+        public String processRegistration(Spitter spitter) {
+            spitterRepository.save(spitter);
+
+            return "redirect:/spitter/" + spitter.getUsername();
+        }
+        
+        @RequestMapping(value = "/{username}", method = GET)
+        public String showSpitterProfile(@PathVariable String username, Model model) {
+        	Spitter spitter = spitterRepository.findByUsername(username);
+	        model.addAttribute(spitter);
+	        return "profile";
+        }
+    }
+    ```
+    > 파라미터로 Spitter 객체를 받음 - 요청 파라미터로 값이 채워짐 (커맨트 객체)
+    > 리다이렉션 처리를 위한 showSpitterProfile 메소드 추가
+***
+
+###### 5.4.2 폼 검증하기
+* 폼에서 넘어오는 값을 검증
+	* processRegistration() 메소드의 잘못된 값들을 확인하고 사용자에게 다시 폼을 보여주자.
+	* 스프링 3.0부터 자바 인증 API가 추가됨 - 하이버네이트 validator형태만 구현하면 됨
+	* P195 표5.1 자바 인증 API에서 제공되는 검증 어노테이션 목록
+	* Spitter 필드에 @NotNull과 @Size 어노테이션을 추가해보자
+	```JAVA
+    package com.chap05.spittr;
+
+    import com.sun.istack.internal.NotNull;
+    import javax.validation.constraints.Size;
+
+    import org.hibernate.validator.constraints.Email;
+
+    public class Spitter {
+
+        private Long id;
+
+        @NotNull
+        @Size(min=5, max=16)
+        private String username;
+
+        @NotNull
+        @Size(min=5, max=25)
+        private String password;
+
+        @NotNull
+        @Size(min=2, max=30)
+        private String firstName;
+
+        @NotNull
+        @Size(min=2, max=30)
+        private String lastName;
+
+        @NotNull
+        @Email
+        private String email;
+		...
+    ```
+
+	* 검증을 적용을 위해 processRegistration() 수정
+	```JAVA
+        @RequestMapping(value = "/register", method = POST)
+        public String processRegistration(@Valid Spitter spitter, Errors errors) {
+            if (errors.hasErrors()) {
+                return "registerForm";
+            }
+            spitterRepository.save(spitter);
+
+            return "redirect:/spitter/" + spitter.getUsername();
+        }
+    ```
+    > 반드시 Errors 파라미터가 검증될 @Valid 어노테이션이 붙은 파라미터 뒤에 와야한다.
+***
+
+#### 5.5 요약
+* 웹 애플리케이션의 일부를 다루었다.
+* 어노테이션을 채용하여 강력하고 유연한 프레임워크로 돌아왔다.
+***
+
+## 6장 웹 뷰 렌더링
+* 다룰내용
+	* HTML으로 모델 데이터 렌더링하기
+	* JSP 뷰 사용하기
+	* 타일즈로 뷰 레이아웃 정의하기
+	* Thymeleaf 뷰로 작업하기
+***
+
+#### 6.1 View Resolution 이해하기
+* 앞 장의 예제
+	* 메소드에서 HTML을 생성하지 않고, 모델에 데이터를 채워서 렌더링을 담당하는 뷰에 전달했음
+	* 컨트롤러에서는 세부적인 뷰의 규현에 대해서는 모른다.
+	* View Resolver
+		* 컨트롤러가 뷰의 이름만 알고 있을때, 모델을 렌더링할때 사용하는 뷰 구현을 결정
+* 일반적인 뷰 결정법과 다른 뷰 리졸버를 살펴보자
+	```JAVA
+    public interface ViewResolver {
+    	View resolveViewName(String viewName, Locale locale) throws Exception;
+    }
+    ```
+    > ViewResolver 인터페이스
+    
+    ```JAVA
+    public interface View {
+    	String getContentType();
+        void render(Map<String, ?> model,
+        			HttpServletRequest request,
+                    HttpServletResponse response) throws Exception;
+    }
+    ```
+    > View 인터페이스
+    > 모델과 서블릿 요청과 응답 객체를 전달받아 결과를 응답에 렌더링
+
+* 즉 view와 viewResolver의 구현체만 개발하면 된다.
+* 또는 기 제공되는 구현체를 사용하면 된다.
+	* P201 표6.1 스프링은 논리적 뷰 이름을 물리적인 뷰의 구현으로 변환하기 위한 13개의 뷰 리졸버를 제공한다.
+		* 각 ViewResolver들은 특정 뷰 기술에 대응한다.
+			* InternalResourceResolver = JSP
+			* TilesViewResolver = 아파치 Tiles
+			* FreeMarkerViewResolver = Freemarker
+			* VelocityViewResolver = Velocity
+***
+
+#### JSP 뷰 만들기
+* 스프링은 다음 두 가지 방식으로 JSP를 지원
+	* InternalResourceViewResolver
+		* JSP 파일에 뷰 이름을 결정하기 위해 사용
+	* form-to-model 바인딩을 위한 것과 일반적인 유틸리티 기능을 제공하는 JSP 태그 라이브러리를 제공
+***
+
+###### 6.2.1
+* JSP-ready 뷰 리졸버 설정
+	* 접두사와 접미사를 붙이는 것으로 뷰의 이름을 결정
+		* "/WEB-INF/views" + "/home" + ".jsp"
+	```JAVA
+        @Bean
+        public ViewResolver viewResolver() {
+            InternalResourceViewResolver resolver = new InternalResourceViewResolver();
+
+            resolver.setPrefix("/WEB-INF/views/");
+            resolver.setSuffix(".jsp");
+            resolver.setExposeContextBeansAsAttributes(true);
+            return resolver;
+        }
+    ```
+    > Java Config
+
+	```XML
+    <bean id="viewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver"
+    	p:prefix="/WEB-INF/views/"
+        p:suffix=".jsp" />
+    ```
+    > XML Config
+***
+
+* JSTL 뷰 결정하기
+	* JSP파일에서 JSTL을 사용할때 뷰를 JstlView를 사용하면
+	* 스프리에서 설정한 로케일과 메시지 소스를 받아서 사용할 수 있다.
+	* viewClass만 변경하면 된다.
+		* resolver.setViewClass(org.springframework.web.servlet.view.JstlView.class);
+***
+
+###### 6.2.2 스프링의 JSP 라이브러리 사용하기
+* 스프링은 2가지 태그 라이브러리를 제공
+	* 모델 속성에 바인딩 된 HTML 양식 태그를 렌더링하는 태그 라이브러리
+	* 종종 유용 할 수있는 유틸리티 태그 라이브러리
+***
+
+* 폼에 모델 바인딩하기
+	* 스프링 form-binding JSP 태그 라이브러리
+        * 모델의 객체에 바인딩되서 모델 객체의 프로퍼티 값으로 채워질수 있다.
+        * 사용자에게 에러를 전달할 수 있음
+        * 사용법 - 다음 선언을 사용
+            ```XML
+            <@% taglib uri="http://www.springframework.org/tags/form" prefix="sf" %>
+            ```
+        * 14개의 태그를 제공
+			* P206 표6.2
+
+   	* 등록폼에 태그 라이브러리 적용
+	```XML
+    <sf:form method="POST" commandName="spitter">
+    	First Name: <sf:input path="firtnName" /><br />
+        Last Name: <sf:input path="lastName" /><br />
+        Email: <sf:input path="email" /><br />
+        Username: <sf:input path="username" /><br />
+        Password: <sf:input path="password" /><br />
+        <input type="submit" value="Register" />
+    </sf:form>
+    ```
+    > path는 value로 렌더링 되면서 모델 객체에 값이 있으면 값을 표시힌다.
+
+	* commandName에 지정한 spitter 객체를 컨트롤러에 추가
+	```JAVA
+    @RequestMapping(value="/register", method=GET)
+    public String showRegistrationForm(Model model) {
+    	model.addAttribute(new Spitter());
+        return "registerForm";
+    }
+    ```
+
+	* 잘못된 값 입력 후 제출했을때 보여지는 등록 페이지
+	```XML
+    <form id="spitter" action="/spitter/spitter/register" method="POST">
+    ..... P208 예제
+    </form>
+    ```
+
+	* 태그 라이브러리 내에서 HTML 5-specific text field - data, range, email 등이 선언 가능
+	```JAVA
+    Email: <sf:input path="email" type="email" /><br />
+    -->
+    Email: <input id="email" name="email" type="email" value="jack" /><br />
+    ```
+
+	* 검증이 실패하면 폼은 이전에 있었던 값으로 채워진다.
+	* 검증 실패에 대한 가이드를 위해 &lt;sf:errors&gt;를 제공한다.
+***
+
+* 오류 표시하기
+	* 검증오류가 발생하면 상세 내용은 모델에 담겨서 request에 담겨서 전달된다.
+	* errors 태그
+	```XML
+    <sf:form method="POST" commandName="spitter">
+    	First Name: <sf:input path="firstName" />
+        	<sf:errors path="firstName" /><br />
+    </sf:form>
+    ```
+    
+    

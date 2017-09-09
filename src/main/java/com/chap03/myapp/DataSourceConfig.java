@@ -12,7 +12,7 @@ import javax.sql.DataSource;
  */
 @Configuration
 public class DataSourceConfig {
-    @Bean(destroyMethod = "shutdown")
+/*    @Bean(destroyMethod = "shutdown")
     @Profile("dev")
     public DataSource embeddedDataSource() {
         return new EmbeddedDatabaseBuilder()
@@ -30,5 +30,5 @@ public class DataSourceConfig {
         jndiObjectFactoryBean.setResourceRef(true);
         jndiObjectFactoryBean.setProxyInterface(javax.sql.DataSource.class);
         return (DataSource) jndiObjectFactoryBean.getObject();
-    }
+    }*/
 }
