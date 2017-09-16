@@ -2642,3 +2642,111 @@ public class StoreService {
 ***
 
 #### 6.4 Thymeleaf로 작업하기
+* JSP의 문제점
+	* HTML 또는 XML 형태지만, 사실은 어느쪽도 아니여서 well-formed가 아님
+	* 예 - HTML 파라미터의 값으로 사용될 수 있는 JSP 태그
+		```XML
+        	<input type="text" value="<c:out value="${thing.name}"/>" />
+        ```
+        
+    * JSP의 스펙이 서블릿 스펙과 강하게 결합되어 있다.
+    	* 일반적인 목적의 템플릿이나 서블릿 기반이 아닌 웹 애플리케이션에는 적절하지 않다.
+* Thymeleaf
+	* JSP를 대체하기 위한 시도
+	* 형태가 자연스럽고 태그라이브러리에 의존하지 않는다.
+	* HTML이 사용가능한 곳에서 쉽게 편집 및 렌더링이 가능하다.
+***
+
+###### 6.4.1 Thymeleaf 뷰 리졸버 설정하기
+* Thymeleaf-Spring 통합을 위한 빈 설정
+	* Thymeleaf ViewResolver 빈 - 논리적 뷰 이름으로 Thymeleaf 템플릿 뷰를 결정한다.
+	* SpringTemplateEngine 빈 - 템플릿을 처리하고 결과를 렌더링한다.
+	* TemplateResolver 빈 - Thymeleaf 템플릿을 불러온다
+* 자바 설정
+	* http://www.thymeleaf.org/doc/articles/thymeleaf3migration.html 참고
+    ```JAVA
+        @Bean
+        public ViewResolver viewResolver() {
+            ThymeleafViewResolver viewResolver = new ThymeleafViewResolver();
+            viewResolver.setTemplateEngine(templateEngine());
+            viewResolver.setCharacterEncoding("UTF-8");
+            return viewResolver;
+        }
+        @Bean
+        public SpringTemplateEngine templateEngine() {
+            SpringTemplateEngine templateEngine = new SpringTemplateEngine();
+            templateEngine.setEnableSpringELCompiler(true);
+            templateEngine.setTemplateResolver(templateResolver());
+            return templateEngine;
+        }
+
+        @Bean
+        public ITemplateResolver templateResolver() {
+            SpringResourceTemplateResolver templateResolver = new SpringResourceTemplateResolver();
+
+            templateResolver.setPrefix("/WEB-INF/views/");
+            templateResolver.setSuffix(".html");
+            templateResolver.setTemplateMode("HTML5");
+            return templateResolver;
+        }
+	```
+    > 뷰리졸버, 템플릿엔진, 템플릿 리졸버 설정
+
+* XML 설정 - P229 참고
+* 최종적인 뷰는 Thymeleaf 템플릿이 됨
+***
+
+###### 6.4.2 Themeleaf 템플릿 정의하기
+* 템플릿은 기본적으로 HTML 파일이며 네임스페이스에 어트리뷰트를 추가해 주는 것으로 동작한다.
+    ```XML
+        <html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+        <head>
+            <title>Spitter</title>
+            <link rel="stylesheet"
+                  type="text/css"
+                  th:href="@{/resources/style.css}"></link>
+        </head>
+        <body>
+            <h1>Welcome to Spitter</h1>
+
+            <a th:href="@{/spittles}">Spittles</a> |
+            <a th:href="@{/spitter/register}">Register</a>
+        </body>
+        </html>
+    ```
+    > th:href를 제외하고는 기본적인 HTML 파일과 같다.
+    > JSP와 달리 특별한 처리 과정 없이 자연스럽게 렌더링하거나 편집이 가능하다.
+    > Thymeleaf 없이 렌더링된 모습 - P231 그림6-6
+***
+
+* Thymeleaf로 폼 바인딩하기
+	* 스프링의 폼 바인딩 태그 라이브러리
+		```XML
+        	<sf:label path="firstName" cssErrorClass="error">First Name</sf:label>
+            <sf:input path="firstName" cssErrorClasss="error" /><br />
+        ```
+		* 값을 매핑해주고, 에러 발생시 cssErrorClass 등을 지원한다.
+	* 스프링의 JSP 태그로 수행한 폼 바인딩 대신 Thymeleaf의 스프링 전용 방법
+		```XML
+        	<label th:class="#{#fields.hasErrors('firstName')}? 'error'"> First Name</label>:
+            <input type="text" th:field="*{firstName}" th:class="${#fields.hasErrors('firstName')}? 'error'" /><br/>
+        ```
+        > input태그는 보조객체로부터 firstName 필드를 참조하기 위해 th:field 애트리뷰트를 사용한다.
+        > 보통은 value 애트리뷰트를 사용하지만 여기서는 필드에 바인딩하기 위해 사용되었다.
+
+	* 등록 폼 템플릿 - 데이터 바인딩 측면에서 살펴보자
+	```XML
+    	P233 예제
+    ```
+    > 바인딩을 위해 Thymeleaf 애트리뷰트와 *{} 표현식을 사용함
+    > 오류 여부 확인을 위해 th:if 애트리뷰트 사용
+    > ${}는 OGNL이며, 스프링에서는 SpEL이다. ${spitter}는 키가 spitter인 model 프로퍼티를 참조한다.
+    > *{}는 선택 표현식으로 선택된 객체에 대해서만 처리한다. *{firstName} 표현식은 Spitter 객체의 firstName 프로퍼티를 검증한다.
+***
+
+#### 6.5 요약
+* 스프링은 뷰 렌더링에 JSP부터 타일즈까지 다양한 선택을 제공한다.
+* 뷰와 뷰 레졸루션 옵션을 살펴보았고 JSP와 타일즈 사용법을 살펴 보았다.
+* JSP의 대안으로 Thymeleaf 사용법을 살펴 보았다.
+***
+
