@@ -1,3 +1,5 @@
+[TOC]
+
 # Spring in action 2/E
 
 ## 1장 스프링 속으로
@@ -2269,13 +2271,374 @@ public class StoreService {
 ***
 
 * 오류 표시하기
-	* 검증오류가 발생하면 상세 내용은 모델에 담겨서 request에 담겨서 전달된다.
-	* errors 태그
+	* 검증오류가 발생하면 오류 내용은 모델에 담겨서 request에 담겨서 전달된다.
+	* &lt;sf:errors&gt; 태그 사용
 	```XML
     <sf:form method="POST" commandName="spitter">
     	First Name: <sf:input path="firstName" />
         	<sf:errors path="firstName" /><br />
     </sf:form>
     ```
+    > path 애트리뷰트 - 에러를 위해서 표시되어야할 모델 객체의 속성
+    > path에 해당하는 프로퍼티가 없다면 아무것도 렌더링되지 않음
     
+    * 오류 강조를 위한 스타일 변경
+    ```XML
+    // JSP
+    <sf:errors path="firstName" cssClass="error" /><br />
     
+    // CSS
+    span.error {
+    	color: red;
+    }
+    ```
+	
+    * 오류 모아서 출력
+    ```XML
+        <sf:form method="POST" commandName="spitter" >
+          <sf:errors path="*" element="div" cssClass="errors" />
+          First Name:<sf:input path="firstName" /><br />
+          Last Name: <sf:input path="lastName" /><br />
+          Email: <sf:input path="email" /><br />
+          Username: <sf:input path="username" /><br />
+          Password: <sf:input path="password" /><br />
+          <input type="submit" value="Register" />
+        </sf:form>
+    // style.css
+        div.errors {
+            background-color: #ffcccc;
+            border: 2px solid red;
+        }
+    ```
+    > path를 *로 설정해서 모든 오류를 렌더링 처리
+    > 오류를 모아서 출력하기 위해 element를 div를 사용
+    > 스타일에 errors 추가
+    
+    * 수정이 필요한 필드의 강조를 위해 label 적용
+    ```XML
+    	<sf:form method="POST" commandName="spitter" >
+        	<sf:label path="firstName" cssErrorClass="error">First Name</sf:label>:
+            <sf:input path="firstName" cssErrorClass="error" /><br />
+        ...
+        </sf:form>
+    // style.css
+    label.error {
+    	color: red;
+    }
+    input.error {
+    	background-color: #ffcccc;
+    }
+    ```
+	> cssErrorClass - error가 발생할 경우 지정한 클래스로 렌더링 -> class="error"
+
+	* 검증 어노테이션에 message 어트리뷰트 설정
+	```JAVA
+        @NotNull
+        @Size(min=5, max=16, message = "{username.size}")
+        private String username;
+
+        @NotNull
+        @Size(min=5, max=25, message = "{password.size}")
+        private String password;
+
+        @NotNull
+        @Size(min=2, max=30, message = "{firstName.size}")
+        private String firstName;
+
+        @NotNull
+        @Size(min=2, max=30, message = "{lastName.size}")
+        private String lastName;
+
+        @NotNull
+        @Email(message = "{email.valid}")
+        private String email;
+    ```
+    > {}로 묶인 값을 가진 스트링으로 대치 됨 - 값은 프로퍼티 파일에 기술
+
+	* ValidationMessages.properties 파일
+	```XML
+    firstName.size=First name must be between {min} and {max} characters long.
+    lastName.size=Last name must be between {min} and {max} characters long.
+    username.size=Username must be between {min} and {max} characters long.
+    password.size=Password must be between {min} and {max} characters long.
+    email.valid=The email address must be valid.
+    ```
+	> locale-specific 하게도 가능하다.
+	> ValidationMessages_es.properties 파일만 생성하면 됨
+***
+
+* 스프링의 일반 태그 라이브러리
+	* 일반적인 JSP 태그 라이브러리도 제공
+	```XML
+    	<%@ taglib uri="http://www.springframework.org/tags" prefix="s" %>
+    ```
+    > P215의 10개의 태그가 사용 가능
+    > 예전에 사용되던 방식이며 스프링폼 태그로 인해 거의 사용되지 않음
+***
+
+* 다국어 메시지 표시하기
+	* 텍스트를 태그를 사용하여 다국어로 렌더링 처리한다.
+	```XML
+    	// 일반 텍스트
+        <h1>Welcome to Spittr!</h1>
+        
+        // 태그 사용
+        <h1><s:message code="spittr.welcome" /></h1>
+    ```
+    > 메시지 소스에 키가 spittr.welcome인 텍스트를 렌더링한다.
+
+	* 메시지 소스 빈 등록
+	```JAVA
+    	@Bean
+        public MessageSource messageSource() {
+        	ResourceBundleMessageSource messageSource = new ResourceBundleMessageSource();
+            messageSource.setBasename("messages");
+            
+            return messageSource;
+        }
+    ```
+    > 렌더링이 동작하게 하기 위해서는 메시지 소스를 빈으로 등록
+    > basename 프로퍼티로 클래스 루트의 메시지 파일명을 지정
+
+	* ReloadableResourceBundleMessageSource
+	```JAVA
+    	@Bean
+        public MessageSource messageSource() {
+        	ReloadableResourceBundleMessageSource messageSource = new ReloadableResourceBundleMessageSource();
+            messageSource.setBasename("file:///etc/spittr/messages");
+            messageSource.setCacheSeconds(10);
+            
+            return messageSource;
+        }
+    ```
+    > 재시작 없이 메시지를 다시 불러옴
+    > basename 프로퍼티 위치를 클래스패스 루트나 외부 폴더 모두 지정 가능함
+
+	* 프로퍼티 파일 생성
+	```XML
+    	spittr.welcome=Welcome to Spittr!
+    ```
+    > 다국어일 경우는 메시지 파일 뒤에 국가명을 붙인다 - messages_es.properties 형태
+***
+
+* URL 만들기
+	* &lt;s:url&gt; 는 URL을 생성해서 변수로 할당하거나 response 내부에 렌더링을 한다.
+	* JSTL의 &lt;c:url&gt;를 대체하며 몇가지 추가 기능이 있다.
+	* 기능
+		```XML
+        	<a href="<s:url href="/spitter/regiser" />">Register</a>
+            ==>
+            <a href="/spittr/spitter/register">Register</a>
+        ```
+        > 컨텍스트 루트를 붙여서 렌더링 처리 한다.
+
+		```XML
+        	<s:url href="/spitter/regiser" var="registerUrl" />
+            
+            <a href="${registerUrl}">Register</a>
+        ```
+        > 나중에 템플릿에서 사용하기 위해 변수에 할당해서 사용 가능
+
+		```XML
+        	<s:url href="//spitter/register" var="registerUrl" scope="request" />
+        ```
+        > 기본 scope은 page scope
+        > scope 속성을 설정하여 응용 프로그램, 세션 또는 요청 범위로 만들 수 있다.
+
+		```XML
+        	<s:url href="/spittles" var="spittleUrl">
+           		<s:param name="max" value="60" />
+                <s:param name="count" value="20" />
+            </s:url>
+        ```
+        > 파라미터 추가는 &lt;s:param&gt;를 사용
+
+		```XML
+        	<s:url href="/spitter/{username}" var="spitterUrl">
+            	<s:param name="username" value="jbauer" />
+            </s:url>
+        ```
+        > 플레이스홀더 변수에 대응되면 변수가 있으면 사용하고 없으면 쿼리 파라미터를 변수로 사용
+
+		```XML
+        	<s:url value="/spittles" htmlEscape="true">
+            	<s:param name="username" value="jbauer" />
+            </s:url>
+            ==>
+            /spitter/spittles?max=60&amp;count=20
+        ```
+        > URL을 웹 페이지의 내용으로 사용하기 위한 이스케이핑 처리
+
+		```XML
+        	<s:url value="/spittles" var="spittlesJSUrl" javaScriptEscape="true">
+            	<s:param name="username" value="jbauer" />
+            </s:url>
+            <script>
+            	var spittlesUrl = "${spittlesJSUrl}"
+            </script>
+            ==>
+            <script>
+            	var spittlesUrl = "\/spitter\/spittles?max=60&count=20"
+            </script>
+        ```
+        > URL을 자바스크립트 코드에서 사용하고 싶을때
+***
+
+* 콘텐트 이스케이핑
+	* &lt;s:escapeBody&lt;
+		* 모든 내용에 대해서 이스케이핑 처리를 해주는 범용 목적의 이스케이핑 태그다.
+		```XML
+        	<s:escapeBody htmlEscape="true">
+            	<h1>Hello</h1>
+            </s:escapeBody>
+            ==>
+            &lt;h1&gt;Hello&lt;/h1&gt;
+        ```
+        > 태그 사이의 내용을 이스케이핑 처리
+
+		```XML
+        	<s:escapeBody javaScriptEscape="true">
+            	<h1>Hello</h1>
+            </s:escapeBody>
+            ==>
+        ```
+        > javaScript 이스케이핑 처리
+***
+
+#### 6.3 아파치 타일즈 뷰로 레이아웃 정의하기
+* 모든 페이지에 적용되는 페이지 레이아웃을 정의할 수 있다.
+* 스프링 MVC는 논리뷰 이름을 타일즈 정의로 해석할 수 있는 뷰 리졸버 형태를 지원한다.
+***
+
+###### 6.3.1 타일즈 뷰 리졸버 설정하기
+* 몇 가지 빈을 설정해줘야 함
+	* TilesConfigurer 빈
+		* 타일 정의의 위치를 정하고 로드해서 타일들을 배치하는 역할
+	* TilesViewResolver
+		* 논리적 뷰 이름으로 타일 정의를 결정
+	* Tiles2와 Tiles3에 각기 다른 패키지에 쌍으로 제공
+	* 설정 - TilesConfigurer 빈 추가
+	```JAVA
+    	@Bean
+        public TilesConfigurer tilesConfigurer() {
+        	TilesConfigurer tiles = new TilesConfigurer();
+            tiles.setDefinitions(new String[] {
+            	"/WEB-INF/layout/tiles.xml"
+            });
+            tiles.setCheckRefresh(true);
+            return tiles;
+        }
+    ```
+    
+    * 다수의 설정 정의
+    ```JAVA
+    	tiles.setDefinitions(new String[] {
+        	"/WEB-INF/**/tiles.xml"
+        });
+    ```
+    
+    * TilesViewResolver 설정
+    ```JAVA
+        @Bean
+        public ViewResolver viewResolver() {
+            return new TilesViewResolver();
+        }
+    ```
+    
+    * XML 타일즈 설정 - P223
+***
+
+* 타일 정의하기
+	* P224 코드6.2 Spittr 애플리케이션의 타일 정의
+	```XML
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE tiles-definitions PUBLIC
+            "-//Apache Software Foundation//DTD Tiles Configuration 3.0//EN"
+            "http://tiles.apache.org/dtds/tiles-config_3_0.dtd">
+    <tiles-definitions>
+
+        <definition name="base" template="/WEB-INF/layout/page.jsp">
+            <put-attribute name="header" value="/WEB-INF/layout/header.jsp" />
+            <put-attribute name="footer" value="/WEB-INF/layout/footer.jsp" />
+        </definition>
+
+        <definition name="home" extends="base">
+            <put-attribute name="body" value="/WEB-INF/views/home.jsp" />
+        </definition>
+
+        <definition name="registerForm" extends="base">
+            <put-attribute name="body" value="/WEB-INF/views/registerForm.jsp" />
+        </definition>
+
+        <definition name="profile" extends="base">
+            <put-attribute name="body" value="/WEB-INF/views/profile.jsp" />
+        </definition>
+
+        <definition name="spittles" extends="base">
+            <put-attribute name="body" value="/WEB-INF/views/spittles.jsp" />
+        </definition>
+
+        <definition name="spittle" extends="base">
+            <put-attribute name="body" value="/WEB-INF/views/spittle.jsp" />
+        </definition>
+
+    </tiles-definitions>
+    ```
+    > 각 definition 요소는 최종적으로 JSP 템플릿을 참조하는 타일을 정의
+    > base 타일을 상속받아 확장하는 것도 가능하다.
+
+	* 기본 레이아웃인 page.jsp
+	```XML
+    <%@ taglib uri="http://www.springframework.org/tags" prefix="s" %>
+    <%@ taglib uri="http://tiles.apache.org/tags-tiles" prefix="t" %>
+    <%@ page session="false" %>
+    <html>
+      <head>
+        <title>Spittr</title>
+        <link rel="stylesheet" 
+              type="text/css" 
+              href="<s:url value="/resources/style.css" />" >
+      </head>
+      <body>
+        <div id="header">
+          <t:insertAttribute name="header" />
+        </div>
+        <div id="content">
+          <t:insertAttribute name="body" />
+        </div>
+        <div id="footer">
+          <t:insertAttribute name="footer" />
+        </div>
+      </body>
+    </html>
+    ```
+    > P226 그림과 같은 레이아웃을 정의한다.
+***
+
+* header.jsp
+	```XML
+    <%@ taglib uri="http://www.springframework.org/tags" prefix="s" %>
+    <a href="<s:url value="/" />">
+    	<img src="<s:url value="/resources" />/images/spitter_logo_50.png" border="0"/>
+    </a>
+    ```
+    
+* footer.jsp
+    ```XML
+    Copyright &copy; Craig Walls
+    ```
+***
+
+* home.jsp
+	```XML
+    <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+    <%@ page session="false" %>
+    <h1>Welcome to Spitter</h1>
+
+    <a href="<c:url value="/spittles" />">Spittles</a> | 
+    <a href="<c:url value="/spitter/register" />">Register</a>
+    ```
+    > 공통요소인 page, header, footer가 빠져 있는 형태임
+***
+
+#### 6.4 Thymeleaf로 작업하기
