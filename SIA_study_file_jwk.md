@@ -2804,3 +2804,66 @@ public class StoreService {
 ***
 
 #### 8.2 플로의 컴포넌트
+* state, transition, flow data의 세가지 기본요소로 정의된다.
+***
+
+###### 8.2.1 상태
+* 스프링 웹 플로의 다섯가지 상태
+	* 동작
+		* 동작 상태는 플로 로직이 발생하는 곳이다.
+	* 결정
+		* 결정 상태는 플로를 두 방향으로 분기 시키고, 플로 데이터의 평가 결과를 바탕으로 라우팅 한다.
+	* 종료
+		* 종료 상태는 플로의 종착점이다. 종료 상태에 도착하면 플로가 종료된다.
+	* 서브플로
+		* 서브플로 상태는 이미 진행 중인 상태의 컨텍스트에서 새로운 플로를 시작한다.
+	* 뷰
+		* 뷰 상태는 플로를 잠시 멈추어 사용자를 플로에 참여 시키도록 초대한다.
+***
+
+* 뷰 상태
+	* 사용자에게 정보를 표시하고 플로에서 능동적인 역할을 할 기회를 주기 위해 사용된다.
+	```XML
+    	<view-state id="welcome" />
+    ```
+    > 뷰 상태를 정의하기 위해 사용
+
+* 동작 상태
+	```XML
+    	<action-state id="saveOrder">
+        	<evaluate expression="pizzaFlowActions.saveOrder(order)" />
+            <transition to="thankYou" />
+        </action-state>
+    ```
+	> 스프링으로 관리되는 빈의 메소드를 수행하고 메소드 호출의 결과에 따라 다른 상태로 전이 된다.
+
+* 결정 상태
+	```XML
+    	<decision-state id="checkDeliveryArea">
+        	<if test="pizzaFlowActions.checkDeliveryArea(customer.zipCode)"
+            	then="addCustomer"
+                else="deliveryWarning" />
+        </decision-state>
+    ```
+	> 플로에서 이진 분기를 가능하게 해준다.
+
+* 서브플로 상태
+	```XML
+    	<subflow-state id="order" subflow="pizza/order">
+            <input name="order" value="order"/>
+            <transition on="orderCreated" to="payment" />
+        </subflow-state>
+    ```
+    > 플로를 실행하는 중에 다른 플로의 호출이 가능하다.
+
+* END 상태
+	```XML
+    	<end-state id="customerReady" />
+    ```
+    > 플로가 종료된다.
+***
+
+###### 8.2.2 전이
+* 전이는 플로 안의 상태를 연결해 주는 역할을 한다.
+* &lt;transition&gt; 요소로 정의
+
