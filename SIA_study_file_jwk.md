@@ -2463,7 +2463,8 @@ public class StoreService {
 
 		```XML
         	<s:url value="/spittles" htmlEscape="true">
-            	<s:param name="username" value="jbauer" />
+            	<s:param name="max" value="60" />
+                <s:param name="count" value="20" />
             </s:url>
             ==>
             /spitter/spittles?max=60&amp;count=20
@@ -2472,7 +2473,8 @@ public class StoreService {
 
 		```XML
         	<s:url value="/spittles" var="spittlesJSUrl" javaScriptEscape="true">
-            	<s:param name="username" value="jbauer" />
+            	<s:param name="max" value="60" />
+                <s:param name="count" value="20" />
             </s:url>
             <script>
             	var spittlesUrl = "${spittlesJSUrl}"
@@ -2486,7 +2488,7 @@ public class StoreService {
 ***
 
 * 콘텐트 이스케이핑
-	* &lt;s:escapeBody&lt;
+	* &lt;s:escapeBody&gt;
 		* 모든 내용에 대해서 이스케이핑 처리를 해주는 범용 목적의 이스케이핑 태그다.
 		```XML
         	<s:escapeBody htmlEscape="true">
